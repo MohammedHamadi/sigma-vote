@@ -79,4 +79,4 @@ npx drizzle-kit push
 4. Start the development server:
 ```bash
 npm run dev
-\`\`\`
+```
