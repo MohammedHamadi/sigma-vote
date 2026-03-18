@@ -60,23 +60,23 @@ Node.js (v18+), npm/pnpm, and a Neon Postgres Database URL.
 ### Installation
 
 1. Clone the repository and install dependencies:
-\`\`\`bash
-git clone https://github.com/yourusername/sigmavote.git
+```bash
+git clone https://github.com/MohammedHamadi/sigma-vote.git
 cd sigmavote
 npm install
-\`\`\`
+```
 
 2. Configure environment variables (`.env.local`):
-\`\`\`env
+```env
 DATABASE_URL="postgresql://user:password@neon-hostname.neon.tech/dbname?sslmode=require"
-\`\`\`
+```
 
 3. Generate the database schema:
-\`\`\`bash
+```bash
 npx drizzle-kit push
-\`\`\`
+```
 
 4. Start the development server:
-\`\`\`bash
+```bash
 npm run dev
 \`\`\`
