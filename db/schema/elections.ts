@@ -1,13 +1,23 @@
-import { pgTable, uuid, varchar, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  text,
+  integer,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
 export const elections = pgTable("elections", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
   description: text("description"),
-  status: varchar("status", { length: 50 }).default("DRAFT").notNull(),
-  // status: DRAFT | OPEN | CLOSED | TALLIED
-  publicKey: text("public_key"), // Paillier public key (JSON)
-  startDate: timestamp("start_date"),
-  endDate: timestamp("end_date"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  status: text("status").default("SETUP"), // SETUP | OPEN | CLOSED | TALLIED
+  paillierPubN: text("paillier_pub_n").notNull(), // Paillier public key n (hex string)
+  paillierPubG: text("paillier_pub_g").notNull(), // Paillier public key g (hex string)
+  rsaPubE: text("rsa_pub_e").notNull(), // RSA e for blind signatures
+  rsaPubN: text("rsa_pub_n").notNull(), // RSA n for blind signatures
+  threshold: integer("threshold").notNull(), // t in (t,n) sharing
+  totalShares: integer("total_shares").notNull(), // n in (t,n) sharing
+  startTime: timestamp("start_time"),
+  endTime: timestamp("end_time"),
+  createdAt: timestamp("created_at").defaultNow(),
 });

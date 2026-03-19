@@ -1,11 +1,17 @@
-import { pgTable, uuid, varchar, text } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  text,
+  integer,
+} from "drizzle-orm/pg-core";
 import { elections } from "./elections";
 
 export const candidates = pgTable("candidates", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  electionId: uuid("election_id")
+  id: serial("id").primaryKey(),
+  electionId: integer("election_id")
     .notNull()
-    .references(() => elections.id, { onDelete: "cascade" }),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
+    .references(() => elections.id),
+  name: text("name").notNull(),
+  party: text("party"),
+  position: integer("position").notNull(), // order index (0, 1, 2, ...)
 });

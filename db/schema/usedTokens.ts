@@ -1,11 +1,17 @@
-import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  integer,
+  timestamp,
+  primaryKey,
+} from "drizzle-orm/pg-core";
 import { elections } from "./elections";
 
+// token_hash is the PK — prevents double-voting
 export const usedTokens = pgTable("used_tokens", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  electionId: uuid("election_id")
+  tokenHash: text("token_hash").primaryKey(), // hash of token (not raw token)
+  electionId: integer("election_id")
     .notNull()
-    .references(() => elections.id, { onDelete: "cascade" }),
-  token: text("token").notNull().unique(),
-  usedAt: timestamp("used_at").defaultNow().notNull(),
+    .references(() => elections.id),
+  usedAt: timestamp("used_at").defaultNow(),
 });

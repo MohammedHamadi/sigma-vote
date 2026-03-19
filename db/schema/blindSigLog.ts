@@ -1,14 +1,30 @@
-import { pgTable, uuid, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  integer,
+  timestamp,
+  unique,
+} from "drizzle-orm/pg-core";
 import { elections } from "./elections";
 import { voters } from "./voters";
 
-export const blindSigLog = pgTable("blind_sig_log", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  electionId: uuid("election_id")
-    .notNull()
-    .references(() => elections.id, { onDelete: "cascade" }),
-  voterId: uuid("voter_id")
-    .notNull()
-    .references(() => voters.id, { onDelete: "cascade" }),
-  issuedAt: timestamp("issued_at").defaultNow().notNull(),
-});
+// Tracks who got a signature, NOT what they voted
+export const blindSigLog = pgTable(
+  "blind_sig_log",
+  {
+    id: serial("id").primaryKey(),
+    electionId: integer("election_id")
+      .notNull()
+      .references(() => elections.id),
+    voterId: integer("voter_id")
+      .notNull()
+      .references(() => voters.id),
+    issuedAt: timestamp("issued_at").defaultNow(),
+  },
+  (table) => [
+    unique("blind_sig_log_election_voter_unique").on(
+      table.electionId,
+      table.voterId
+    ), // one signature per voter per election
+  ]
+);
