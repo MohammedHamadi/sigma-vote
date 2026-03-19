@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build a full-stack electronic voting system from scratch that guarantees vote **confidentiality**, **integrity**, and **anonymity** using Paillier homomorphic encryption, RSA blind signatures, Sigma-protocol ZKPs, and Shamir's Secret Sharing for threshold decryption.
+Build a full-stack voting system from scratch that guarantees vote **confidentiality**, **integrity**, and **anonymity** using Paillier homomorphic encryption, RSA blind signatures, Sigma-protocol ZKPs, and Shamir's Secret Sharing for threshold decryption.
 
 ---
 
@@ -244,8 +244,6 @@ secure-e-voting/
 ### Milestone 2 — Database Schema
 
 #### Task 2.1 — Database Setup
-
-Using SQLite (via `better-sqlite3`) for simplicity.
 
 **Tables:**
 
