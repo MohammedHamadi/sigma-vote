@@ -132,7 +132,7 @@ export default function VotingFlow() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md" hideCloseButton>
+        <DialogContent className="sm:max-w-md">
           
           {/* STEP 1 */}
           {step === 1 && (

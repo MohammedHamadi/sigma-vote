@@ -1,8 +1,12 @@
 import Link from "next/link";
-import { Shield } from "lucide-react";
+import { Shield, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { auth } from "@/auth";
+import { signOutAction } from "@/features/auth/actions";
 
-export function Navbar() {
+export async function Navbar() {
+  const session = await auth();
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center mx-auto px-4 md:px-8">
@@ -29,6 +33,23 @@ export function Navbar() {
             <Button variant="outline" size="sm" className="hidden md:flex">
               Verify Ballot
             </Button>
+
+            {session?.user ? (
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 text-sm font-medium mr-2">
+                  <UserIcon className="h-4 w-4 text-muted-foreground" />
+                  <span>{session.user.name}</span>
+                </div>
+                <form action={signOutAction}>
+                  <Button variant="secondary" size="sm" type="submit">Sign Out</Button>
+                </form>
+              </div>
+            ) : (
+              <Link href="/login" passHref legacyBehavior>
+                <Button variant="secondary" size="sm">Login</Button>
+              </Link>
+            )}
+
             <Button size="sm">Connect Wallet</Button>
           </div>
         </div>
