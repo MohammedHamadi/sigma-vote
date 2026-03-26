@@ -3,7 +3,12 @@
  * Formula: m' = (m * r^e) mod n
  */
 export function blindMessage(message: bigint, r: bigint, publicKey: unknown) {
-  // TODO: Blind a message
+  // publicKey: { n, e }
+  const { n, e } = publicKey as { n: string; e: string };
+  const nBig = BigInt(n);
+  const eBig = BigInt(e);
+  // m' = (m * r^e) mod n
+  return (message * modPow(r, eBig, nBig)) % nBig;
 }
 
 /**
@@ -11,7 +16,12 @@ export function blindMessage(message: bigint, r: bigint, publicKey: unknown) {
  * Formula: s' = (m')^d mod n
  */
 export function signBlinded(blindedMessage: bigint, privateKey: unknown) {
-  // TODO: Sign a blinded message
+  // privateKey: { d, n }
+  const { d, n } = privateKey as { d: string; n: string };
+  const dBig = BigInt(d);
+  const nBig = BigInt(n);
+  // s' = (m')^d mod n
+  return modPow(blindedMessage, dBig, nBig);
 }
 
 /**
@@ -19,7 +29,11 @@ export function signBlinded(blindedMessage: bigint, privateKey: unknown) {
  * Formula: s = (s' * r^-1) mod n
  */
 export function unblindSignature(blindedSig: bigint, r: bigint, publicKey: unknown) {
-  // TODO: Unblind the signature
+  // publicKey: { n }
+  const { n } = publicKey as { n: string };
+  const nBig = BigInt(n);
+  // s = (s' * r^-1) mod n
+  return (blindedSig * modInverse(r, nBig)) % nBig;
 }
 
 /**
@@ -27,5 +41,10 @@ export function unblindSignature(blindedSig: bigint, r: bigint, publicKey: unkno
  * Formula: s^e mod n == m
  */
 export function verifySignature(message: bigint, signature: bigint, publicKey: unknown) {
-  // TODO: Verify an unblinded signature
+  // publicKey: { n, e }
+  const { n, e } = publicKey as { n: string; e: string };
+  const nBig = BigInt(n);
+  const eBig = BigInt(e);
+  // s^e mod n == m
+  return modPow(signature, eBig, nBig) === message;
 }
