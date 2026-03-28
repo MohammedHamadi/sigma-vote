@@ -1,12 +1,17 @@
 /**
- * Modular exponentiation: calculcates (base^exp) % mod
- * Uses a memory-efficient algorithm like binary exponentiation or windowed method
+ * Cryptographically secure BigInt utilities for Voting
+ */
+
+/**
+ * Modular exponentiation: calculates (base^exp) % mod
  */
 export function modPow(base: bigint, exp: bigint, mod: bigint): bigint {
-  // Modular exponentiation using right-to-left binary method
+  if (mod === 1n) return 0n;
   let result = 1n;
   base = base % mod;
-  while (exp > 0) {
+  if (base < 0n) base += mod;
+  
+  while (exp > 0n) {
     if (exp % 2n === 1n) {
       result = (result * base) % mod;
     }
@@ -18,31 +23,35 @@ export function modPow(base: bigint, exp: bigint, mod: bigint): bigint {
 
 /**
  * Modular multiplicative inverse: find x such that (a * x) % mod == 1
- * Typically implemented using the Extended Euclidean Algorithm
+ * Uses Extended Euclidean Algorithm safely.
+ * Throws an error if inverse doesn't exist (i.e. gcd(a, mod) != 1).
  */
 export function modInverse(a: bigint, mod: bigint): bigint {
-  // Extended Euclidean Algorithm
-  let m0 = mod, t, q;
-  let x0 = 0n, x1 = 1n;
-  if (mod === 1n) return 0n;
-  while (a > 1n) {
-    q = a / mod;
-    t = mod;
-    mod = a % mod;
-    a = t;
-    t = x0;
-    x0 = x1 - q * x0;
-    x1 = t;
+  let [old_r, r] = [a % mod, mod];
+  let [old_s, s] = [1n, 0n];
+
+  if (old_r < 0n) old_r += mod;
+
+  while (r !== 0n) {
+    const quotient = old_r / r;
+    [old_r, r] = [r, old_r - quotient * r];
+    [old_s, s] = [s, old_s - quotient * s];
   }
-  if (x1 < 0n) x1 += m0;
-  return x1;
+
+  if (old_r > 1n) {
+    throw new Error(`Inverse does not exist for a=${a}, mod=${mod}`);
+  }
+  
+  if (old_s < 0n) old_s += mod;
+  return old_s;
 }
 
 /**
- * Calculates the Greatest Common Divisor (GCD) of a and b
+ * Calculates the Greatest Common Divisor (GCD)
  */
 export function gcd(a: bigint, b: bigint): bigint {
-  // Euclidean algorithm
+  a = a < 0n ? -a : a;
+  b = b < 0n ? -b : b;
   while (b !== 0n) {
     let t = b;
     b = a % b;
@@ -52,23 +61,95 @@ export function gcd(a: bigint, b: bigint): bigint {
 }
 
 /**
- * Generates a cryptographically secure random BigInt with specified bit length
+ * Calculates Least Common Multiple (LCM)
+ */
+export function lcm(a: bigint, b: bigint): bigint {
+  if (a === 0n || b === 0n) return 0n;
+  return (a * b) / gcd(a, b);
+}
+
+/**
+ * Generates a cryptographically secure random BigInt with up to `bits` bit length
  */
 export function randomBigInt(bits: number): bigint {
-  // Generate a cryptographically secure random bigint of given bit length
   if (bits <= 0) return 0n;
   const bytes = Math.ceil(bits / 8);
   const buf = new Uint8Array(bytes);
   if (typeof window !== 'undefined' && window.crypto) {
     window.crypto.getRandomValues(buf);
   } else {
-    // Node.js
     const crypto = require('crypto');
     crypto.randomFillSync(buf);
   }
   let hex = Array.from(buf, x => x.toString(16).padStart(2, '0')).join('');
   let rnd = BigInt('0x' + hex);
-  // Mask to the correct number of bits
   const mask = (1n << BigInt(bits)) - 1n;
   return rnd & mask;
+}
+
+/**
+ * Miller-Rabin primality test. Tests if a number is prime with high probability.
+ */
+export function isPrime(n: bigint, k: number = 40): boolean {
+  if (n <= 1n) return false;
+  if (n <= 3n) return true;
+  if (n % 2n === 0n) return false;
+
+  let d = n - 1n;
+  let r = 0n;
+  while (d % 2n === 0n) {
+    d /= 2n;
+    r += 1n;
+  }
+
+  const bitLength = n.toString(2).length;
+
+  for (let i = 0; i < k; i++) {
+    let a: bigint;
+    do {
+      a = randomBigInt(bitLength);
+    } while (a < 2n || a >= n - 2n);
+
+    let x = modPow(a, d, n);
+    if (x === 1n || x === n - 1n) continue;
+
+    let testPass = false;
+    for (let j = 0n; j < r - 1n; j++) {
+      x = modPow(x, 2n, n);
+      if (x === n - 1n) {
+        testPass = true;
+        break;
+      }
+    }
+
+    if (!testPass) return false;
+  }
+
+  return true;
+}
+
+/**
+ * Generates a cryptographically secure random prime number of exactly `bits` length.
+ */
+export function randomPrime(bits: number): bigint {
+  while (true) {
+    let p = randomBigInt(bits);
+    // Ensure it is odd and exactly 'bits' long by setting MSB and LSB
+    p |= (1n << BigInt(bits - 1)) | 1n;
+    if (isPrime(p)) return p;
+  }
+}
+
+/**
+ * Generates a random BigInt in the range [min, max) securely.
+ */
+export function randomBigIntInRange(min: bigint, max: bigint): bigint {
+  if (max <= min) return min;
+  const range = max - min;
+  const bitLen = range.toString(2).length;
+  let rnd: bigint;
+  do {
+    rnd = randomBigInt(bitLen);
+  } while (rnd >= range);
+  return rnd + min;
 }
