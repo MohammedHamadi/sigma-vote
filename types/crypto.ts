@@ -8,6 +8,7 @@ export interface PaillierKeyPair {
   privateKey: {
     lambda: string;
     mu: string;
+    n: string;
   };
 }
 
