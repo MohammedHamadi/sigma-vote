@@ -2,53 +2,62 @@
 
 ## Task 1: Cryptographic Core
 
-- [ ] **Paillier Encryption ([lib/crypto/paillier.ts](file:///d:/GitHub/sigma-vote/lib/crypto/paillier.ts)):**
-  - Implement key generation (n, g, lambda, mu).
-  - Implement encryption/decryption logic.
-  - Implement homomorphic addition (multiplication of ciphertexts).
-- [ ] **Shamir's Secret Sharing ([lib/crypto/shamir.ts](file:///d:/GitHub/sigma-vote/lib/crypto/shamir.ts)):**
-  - Implement secret splitting into `n` shares.
-  - Implement Lagrange interpolation for secret reconstruction.
-- [ ] **RSA Blind Signatures ([lib/crypto/blind-signature.ts](file:///d:/GitHub/sigma-vote/lib/crypto/blind-signature.ts)):**
-  - Implement blinding/unblinding logic.
-  - Implement signing and verification.
-- [ ] **Zero-Knowledge Proofs ([lib/crypto/zkp.ts](file:///d:/GitHub/sigma-vote/lib/crypto/zkp.ts)):**
-  - Implement Sigma-protocol for 0-or-1 vote proof.
-  - Implement proof verification logic.
+- [x] **Paillier Encryption ([lib/crypto/paillier.ts](file:///d:/GitHub/sigma-vote/lib/crypto/paillier.ts)):** COMPLETED
+  - Key generation (n, g, lambda, mu) implemented.
+  - Encryption/decryption logic implemented.
+  - Homomorphic addition implemented.
+- [x] **Shamir's Secret Sharing ([lib/crypto/shamir.ts](file:///d:/GitHub/sigma-vote/lib/crypto/shamir.ts)):** COMPLETED
+  - Secret splitting into `n` shares with chunking for large secrets (256-bit chunks).
+  - Lagrange interpolation for secret reconstruction.
+- [x] **RSA Blind Signatures ([lib/crypto/blind-signature.ts](file:///d:/GitHub/sigma-vote/lib/crypto/blind-signature.ts)):** COMPLETED
+  - Blinding/unblinding logic implemented.
+  - Signing and verification implemented.
+  - RSA keypair generation added.
+- [x] **Zero-Knowledge Proofs ([lib/crypto/zkp.ts](file:///d:/GitHub/sigma-vote/lib/crypto/zkp.ts)):** COMPLETED
+  - Sigma-protocol for 0-or-1 vote proof implemented.
+  - Proof verification logic implemented.
 
 ## Task 2: Database & Data Access
 
-- [ ] **Data Access Functions (`db-actions/`):**
-  - Implement all functions in [voters.ts](file:///d:/GitHub/sigma-vote/db/schema/voters.ts), [elections.ts](file:///d:/GitHub/sigma-vote/db/schema/elections.ts), [candidates.ts](file:///d:/GitHub/sigma-vote/db/schema/candidates.ts), [ballots.ts](file:///d:/GitHub/sigma-vote/db/schema/ballots.ts), [keyShares.ts](file:///d:/GitHub/sigma-vote/db/schema/keyShares.ts), [usedTokens.ts](file:///d:/GitHub/sigma-vote/db/schema/usedTokens.ts), and [blindSigLog.ts](file:///d:/GitHub/sigma-vote/db/schema/blindSigLog.ts).
-  - These should use Drizzle ORM to interact with the Neon Postgres database.
+- [x] **Data Access Functions (`db-actions/`):** COMPLETED
+  - All functions implemented in `voters.ts`, `elections.ts`, `candidates.ts`, `ballots.ts`, `keyShares.ts`, `usedTokens.ts`, and `blindSigLog.ts`.
+  - Uses Drizzle ORM with Neon Postgres. All functions throw on error and return typed data.
+  - Shared utilities in `lib/db-utils.ts` (token hashing, BigInt serialization, election window validation).
+  - Database migrations applied (rsa_priv_d column, results column added).
 
 ## Task 3: Backend Business Logic
 
-_Status: Initial Auth implemented; others are to be done._
+_Status: COMPLETED_
 
-- [ ] **Election Management ([features/admin/actions.ts](file:///d:/GitHub/sigma-vote/features/admin/actions.ts)):**
-  - Implement `createElection` (triggering key ceremony: Paillier keygen + Shamir split).
-  - Implement `openElection` and `closeElection` status transitions.
-- [ ] **Voting Logic ([features/voting/actions.ts](file:///d:/GitHub/sigma-vote/features/voting/actions.ts)):**
-  - Implement [requestBlindSignature](file:///d:/GitHub/sigma-vote/features/voting/actions.ts#5-8) (eligibility check + RSA signing).
-- [ ] **Anonymous Submission Route ([app/api/vote/[electionId]/submit/route.ts](file:///d:/GitHub/sigma-vote/app/api/vote/%5BelectionId%5D/submit/route.ts)):**
-  - **CRITICAL:** Implement the anonymous POST handler that verifies blind signatures and ZKPs before storing ballots.
-- [ ] **Tallying Logic ([features/admin/actions.ts](file:///d:/GitHub/sigma-vote/features/admin/actions.ts)):**
-  - Implement `submitKeyShare`.
-  - Implement the `tally` function (Reconstruct key → Homomorphic aggregate → Decrypt).
+- [x] **Election Management ([features/admin/actions.ts](file:///d:/GitHub/sigma-vote/features/admin/actions.ts)):** COMPLETED
+  - `createElection` triggers key ceremony: Paillier keygen + RSA keygen + Shamir split of lambda.
+  - `openElection` and `closeElection` status transitions with validation.
+  - `addCandidate` for adding candidates during SETUP phase.
+- [x] **Voting Logic ([features/voting/actions.ts](file:///d:/GitHub/sigma-vote/features/voting/actions.ts)):** COMPLETED
+  - `requestBlindSignature` with eligibility check, RSA signing, and blind sig logging.
+- [x] **Anonymous Submission Route ([app/api/vote/[electionId]/submit/route.ts](file:///d:/GitHub/sigma-vote/app/api/vote/%5BelectionId%5D/submit/route.ts)):** COMPLETED
+  - Verifies blind signatures, checks token uniqueness, verifies ZKPs, stores ballots, marks tokens used.
+- [x] **Tallying Logic ([features/admin/actions.ts](file:///d:/GitHub/sigma-vote/features/admin/actions.ts)):** COMPLETED
+  - `submitKeyShare` marks admin share as submitted, checks threshold.
+  - `tally` blocks until threshold met → reconstructs lambda → homomorphic aggregate → decrypts → stores results in DB.
 
 ## Task 4: Frontend Development
 
-_Status: Page structures exist; logic missing._
+_Status: Mostly complete. VotingWizard needs client-side crypto integration._
 
-- [ ] **Voting Wizard ([features/voting/components/VotingWizard.tsx](file:///d:/GitHub/sigma-vote/features/voting/components/VotingWizard.tsx)):**
-  - Implement the multi-step client-side flow.
-  - Integrate client-side crypto (blinding, encryption, ZKP generation).
-- [ ] **Admin Dashboard:**
-  - Build the `CreateElectionForm` with key ceremony visualization.
-  - Build `ManageElectionPanel` and `TallyPanel`.
-- [ ] **Results Visualization:**
-  - Connect `ResultsChart.tsx` to the `getResults` action using Recharts.
+- [ ] **Voting Wizard ([features/voting/components/VotingWizard.tsx](file:///d:/GitHub/sigma-vote/features/voting/components/VotingWizard.tsx)):** PARTIAL
+  - Multi-step UI complete (select → review → submit).
+  - **TODO:** Integrate client-side crypto: RSA blinding, Paillier encryption, ZKP generation.
+  - Currently sends hardcoded placeholder values to the submission endpoint.
+- [x] **Admin Dashboard:** COMPLETED
+  - `CreateElectionForm` with key ceremony visualization.
+  - `ManageElectionPanel` with open/close, add candidates.
+  - `TallyPanel` with key share submission and tally trigger.
+  - `KeyShareInput` for admin share submission.
+- [x] **Results Visualization:** COMPLETED
+  - `ResultsChart` displays real vote counts with percentage bars.
+  - `ResultsSummary` shows total votes and leading candidate.
+  - Results stored in DB during tally, retrieved by `getResults()`.
 
 ## Task 5: Security Documentation
 

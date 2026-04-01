@@ -1,15 +1,24 @@
-// admin layout — Server component with role guard
-export default function AdminLayout({
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { AdminSidebar } from "@/features/admin/components/AdminSidebar";
+
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // TODO: Role-based access check — redirect non-admins
+  const session = await auth();
+  if (!session?.user || session.user.role !== "admin") {
+    redirect("/login");
+  }
+
   return (
-    <div className="admin-layout">
-      {/* TODO: Import AdminSidebar from features/admin/components */}
-      <aside>{/* AdminSidebar */}</aside>
-      <main>{children}</main>
+    <div className="flex min-h-screen">
+      <aside className="w-64 border-r p-4">
+        <h2 className="text-lg font-semibold mb-4">Admin</h2>
+        <AdminSidebar />
+      </aside>
+      <main className="flex-1 p-8">{children}</main>
     </div>
   );
 }

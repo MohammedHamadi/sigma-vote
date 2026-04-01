@@ -1,4 +1,32 @@
-import { modPow, modInverse, gcd, randomBigIntInRange } from './bigint-utils';
+import { modPow, modInverse, gcd, lcm, randomPrime, randomBigIntInRange } from './bigint-utils';
+import { RSAKeyPair } from '../../types/crypto';
+
+/**
+ * Generates an RSA keypair for blind signatures
+ * Uses Paillier's n as the modulus (shared with Paillier for simplicity)
+ */
+export function generateRSAKeyPair(_paillierN: bigint) {
+  const e = 65537n;
+  // We need phi(n) to compute d. Since n = p*q (from Paillier),
+  // we need to regenerate p and q or store phi separately.
+  // For this implementation, we'll generate fresh RSA primes.
+  const bits = 1024;
+  let p: bigint, q: bigint;
+  do {
+    p = randomPrime(bits);
+    q = randomPrime(bits);
+  } while (p === q);
+
+  const nRsa = p * q;
+  const phi = lcm(p - 1n, q - 1n);
+  const d = modInverse(e, phi);
+
+  const keypair: RSAKeyPair = {
+    publicKey: { n: nRsa.toString(), e: e.toString() },
+    privateKey: { d: d.toString() },
+  };
+  return keypair;
+}
 
 /**
  * Generates a valid blinding factor 'r' for a given RSA public key

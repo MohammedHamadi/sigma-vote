@@ -1,11 +1,20 @@
 "use server";
 
-// TODO: Implement election data-fetching server actions
+import { getElections as dbGetElections, getElectionById as dbGetElectionById } from "@/db-actions/elections";
+import { getCandidatesByElection } from "@/db-actions/candidates";
 
 export async function getElections() {
-  // TODO: Fetch all elections from db
+  return dbGetElections();
 }
 
 export async function getElectionById(electionId: string) {
-  // TODO: Fetch single election with candidates
+  const id = parseInt(electionId, 10);
+  if (isNaN(id)) throw new Error("Invalid election ID");
+
+  const election = await dbGetElectionById(id);
+  if (!election) throw new Error("Election not found");
+
+  const candidates = await getCandidatesByElection(id);
+
+  return { election, candidates };
 }

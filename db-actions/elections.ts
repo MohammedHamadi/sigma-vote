@@ -63,6 +63,16 @@ export async function updateElectionTimes(
   return result;
 }
 
+export async function updateElectionResults(id: number, resultsJson: string): Promise<Election> {
+  const [result] = await db
+    .update(elections)
+    .set({ results: resultsJson })
+    .where(eq(elections.id, id))
+    .returning();
+  if (!result) throw new Error(`Election with id ${id} not found`);
+  return result;
+}
+
 export async function deleteElection(id: number): Promise<void> {
   const election = await getElectionById(id);
   if (!election) throw new Error(`Election with id ${id} not found`);

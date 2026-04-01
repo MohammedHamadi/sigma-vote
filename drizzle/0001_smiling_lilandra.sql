@@ -1,0 +1,1 @@
+ALTER TABLE "elections" ADD COLUMN "rsa_priv_d" text;

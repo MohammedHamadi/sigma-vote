@@ -15,9 +15,11 @@ export const elections = pgTable("elections", {
   paillierPubG: text("paillier_pub_g").notNull(), // Paillier public key g (hex string)
   rsaPubE: text("rsa_pub_e").notNull(), // RSA e for blind signatures
   rsaPubN: text("rsa_pub_n").notNull(), // RSA n for blind signatures
+  rsaPrivD: text("rsa_priv_d"), // RSA d for signing (server-side only)
   threshold: integer("threshold").notNull(), // t in (t,n) sharing
   totalShares: integer("total_shares").notNull(), // n in (t,n) sharing
   startTime: timestamp("start_time"),
   endTime: timestamp("end_time"),
+  results: text("results"), // JSON: [{ candidateId, name, party, votes }]
   createdAt: timestamp("created_at").defaultNow(),
 });

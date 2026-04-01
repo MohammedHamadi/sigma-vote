@@ -1,9 +1,10 @@
-// elections — All elections list
+import { ElectionList } from "@/features/elections/components/ElectionList";
+
 export default function ElectionsPage() {
   return (
-    <div>
-      <h1>Elections</h1>
-      {/* TODO: Import and render ElectionList from features/elections/components */}
+    <div className="container mx-auto py-8 px-4">
+      <h1 className="text-3xl font-bold mb-6">Elections</h1>
+      <ElectionList />
     </div>
   );
 }

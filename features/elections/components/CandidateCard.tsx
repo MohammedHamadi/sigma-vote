@@ -1,8 +1,17 @@
-// CandidateCard — Server component
-export function CandidateCard() {
+import type { Candidate } from "@/db/schema";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+export function CandidateCard({ candidate }: { candidate: Candidate }) {
   return (
-    <div>
-      {/* TODO: Candidate name, photo, description */}
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>{candidate.name}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {candidate.party && (
+          <p className="text-sm text-muted-foreground">{candidate.party}</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
