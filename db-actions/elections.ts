@@ -3,32 +3,57 @@ import { elections, type Election, type NewElection } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function createElection(data: Omit<NewElection, "id" | "createdAt">): Promise<Election> {
-  const [result] = await db.insert(elections).values(data).returning();
-  if (!result) throw new Error("Failed to create election");
-  return result;
+  try {
+    const [result] = await db.insert(elections).values(data).returning();
+    if (!result) throw new Error("Failed to create election");
+    return result;
+  } catch (err) {
+    console.error("[db-actions] Error creating election:", err);
+    throw err;
+  }
 }
 
 export async function getElections(): Promise<Election[]> {
-  return db.select().from(elections);
+  try {
+    return await db.select().from(elections);
+  } catch (err) {
+    console.error("[db-actions] Error getting elections:", err);
+    throw err;
+  }
 }
 
 export async function getElectionById(id: number): Promise<Election | undefined> {
-  const [result] = await db.select().from(elections).where(eq(elections.id, id)).limit(1);
-  return result;
+  try {
+    const [result] = await db.select().from(elections).where(eq(elections.id, id)).limit(1);
+    return result;
+  } catch (err) {
+    console.error(`[db-actions] Error getting election by id ${id}:`, err);
+    throw err;
+  }
 }
 
 export async function getElectionsByStatus(status: string): Promise<Election[]> {
-  return db.select().from(elections).where(eq(elections.status, status));
+  try {
+    return await db.select().from(elections).where(eq(elections.status, status));
+  } catch (err) {
+    console.error(`[db-actions] Error getting elections by status ${status}:`, err);
+    throw err;
+  }
 }
 
 export async function updateElectionStatus(id: number, status: string): Promise<Election> {
-  const [result] = await db
-    .update(elections)
-    .set({ status })
-    .where(eq(elections.id, id))
-    .returning();
-  if (!result) throw new Error(`Election with id ${id} not found`);
-  return result;
+  try {
+    const [result] = await db
+      .update(elections)
+      .set({ status })
+      .where(eq(elections.id, id))
+      .returning();
+    if (!result) throw new Error(`Election with id ${id} not found`);
+    return result;
+  } catch (err) {
+    console.error(`[db-actions] Error updating election ${id} status:`, err);
+    throw err;
+  }
 }
 
 export async function updateElectionKeys(
@@ -38,15 +63,21 @@ export async function updateElectionKeys(
     paillierPubG: string;
     rsaPubE: string;
     rsaPubN: string;
+    rsaPrivD: string;
   }
 ): Promise<Election> {
-  const [result] = await db
-    .update(elections)
-    .set(keys)
-    .where(eq(elections.id, id))
-    .returning();
-  if (!result) throw new Error(`Election with id ${id} not found`);
-  return result;
+  try {
+    const [result] = await db
+      .update(elections)
+      .set(keys)
+      .where(eq(elections.id, id))
+      .returning();
+    if (!result) throw new Error(`Election with id ${id} not found`);
+    return result;
+  } catch (err) {
+    console.error(`[db-actions] Error updating election ${id} keys:`, err);
+    throw err;
+  }
 }
 
 export async function updateElectionTimes(
@@ -54,30 +85,63 @@ export async function updateElectionTimes(
   startTime: Date,
   endTime: Date
 ): Promise<Election> {
-  const [result] = await db
-    .update(elections)
-    .set({ startTime, endTime })
-    .where(eq(elections.id, id))
-    .returning();
-  if (!result) throw new Error(`Election with id ${id} not found`);
-  return result;
+  try {
+    const [result] = await db
+      .update(elections)
+      .set({ startTime, endTime })
+      .where(eq(elections.id, id))
+      .returning();
+    if (!result) throw new Error(`Election with id ${id} not found`);
+    return result;
+  } catch (err) {
+    console.error(`[db-actions] Error updating election ${id} times:`, err);
+    throw err;
+  }
 }
 
 export async function updateElectionResults(id: number, resultsJson: string): Promise<Election> {
-  const [result] = await db
-    .update(elections)
-    .set({ results: resultsJson })
-    .where(eq(elections.id, id))
-    .returning();
-  if (!result) throw new Error(`Election with id ${id} not found`);
-  return result;
+  try {
+    const [result] = await db
+      .update(elections)
+      .set({ results: resultsJson })
+      .where(eq(elections.id, id))
+      .returning();
+    if (!result) throw new Error(`Election with id ${id} not found`);
+    return result;
+  } catch (err) {
+    console.error(`[db-actions] Error updating election ${id} results:`, err);
+    throw err;
+  }
 }
 
 export async function deleteElection(id: number): Promise<void> {
-  const election = await getElectionById(id);
-  if (!election) throw new Error(`Election with id ${id} not found`);
-  if (election.status !== "SETUP") {
-    throw new Error("Can only delete elections in SETUP status");
+  try {
+    const election = await getElectionById(id);
+    if (!election) throw new Error(`Election with id ${id} not found`);
+    if (election.status !== "SETUP") {
+      throw new Error("Can only delete elections in SETUP status");
+    }
+    await db.delete(elections).where(eq(elections.id, id));
+  } catch (err) {
+    console.error(`[db-actions] Error deleting election ${id}:`, err);
+    throw err;
   }
-  await db.delete(elections).where(eq(elections.id, id));
+}
+
+export async function updateElectionDetails(
+  id: number,
+  data: Partial<Pick<NewElection, "title" | "description" | "threshold" | "totalShares">>
+): Promise<Election> {
+  try {
+    const [result] = await db
+      .update(elections)
+      .set(data)
+      .where(eq(elections.id, id))
+      .returning();
+    if (!result) throw new Error(`Election with id ${id} not found`);
+    return result;
+  } catch (err) {
+    console.error(`[db-actions] Error updating election ${id} details:`, err);
+    throw err;
+  }
 }
