@@ -55,15 +55,27 @@ export async function POST(
     }
 
     const paillierPublicKey = { n: election.paillierPubN, g: election.paillierPubG };
-    for (let i = 0; i < ciphertexts.length; i++) {
-      const ciphertext = BigInt(ciphertexts[i]);
-      const proofValid = verifyZeroOrOne(ciphertext, proofs[i], paillierPublicKey);
-      if (!proofValid) {
-        return NextResponse.json(
-          { error: `Invalid ZKP for ciphertext at index ${i}` },
-          { status: 400 }
-        );
-      }
+    
+    // Deserialize ciphertexts and proofs
+    const ciphertextsBigInt = ciphertexts.map(c => BigInt(c));
+    
+    let ballotProof;
+    try {
+      // Import dynamically to avoid top-level require if needed, but standard import is fine
+      const { deserializeBallotProof } = require("@/lib/crypto/proof-serialization");
+      ballotProof = deserializeBallotProof(proofs as any);
+    } catch (e) {
+      return NextResponse.json({ error: "Invalid proof format" }, { status: 400 });
+    }
+
+    const { verifyBallot } = require("@/lib/crypto/zkp");
+    const isBallotValid = await verifyBallot(ciphertextsBigInt, ballotProof, paillierPublicKey);
+    
+    if (!isBallotValid) {
+      return NextResponse.json(
+        { error: "Zero-Knowledge Proof verification failed. Ballot rejected." },
+        { status: 400 }
+      );
     }
 
     await insertBallot({

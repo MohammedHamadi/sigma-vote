@@ -92,3 +92,24 @@ export function homomorphicAdd(c1: bigint, c2: bigint, publicKey: unknown) {
   const n2 = nBig * nBig;
   return (c1 * c2) % n2;
 }
+
+/**
+ * Encrypts a plaintext message 'm' using the public key and returns both the
+ * ciphertext and the generated randomness 'r'. Needed for ZKPs.
+ */
+export function paillierEncryptWithRandomness(
+  plaintext: bigint,
+  publicKey: { n: string; g: string }
+): { ciphertext: bigint; randomness: bigint } {
+  const nBig = BigInt(publicKey.n);
+  const gBig = BigInt(publicKey.g);
+  const n2 = nBig * nBig;
+  
+  let r: bigint;
+  do {
+    r = randomBigIntInRange(1n, nBig);
+  } while (gcd(r, nBig) !== 1n);
+  
+  const c = (modPow(gBig, plaintext, n2) * modPow(r, nBig, n2)) % n2;
+  return { ciphertext: c, randomness: r };
+}
