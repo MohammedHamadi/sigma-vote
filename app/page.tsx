@@ -22,7 +22,7 @@ export default function Home() {
         </p>
         
         <div className="flex flex-wrap items-center justify-center gap-4">
-          <Link href="/vote">
+          <Link href="/elections">
             <Button size="lg" className="h-12 px-8 font-semibold">
               View Active Elections
             </Button>

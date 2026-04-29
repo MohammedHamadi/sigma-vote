@@ -17,7 +17,7 @@ export async function Navbar() {
         <div className="flex flex-1 items-center justify-end space-x-6">
           <nav className="flex items-center space-x-4 text-sm font-medium">
             <Link
-              href="/vote"
+              href="/elections"
               className="transition-colors hover:text-foreground/80 text-foreground/60"
             >
               Active Elections
@@ -51,8 +51,6 @@ export async function Navbar() {
                 <Button variant="secondary" size="sm">Login</Button>
               </Link>
             )}
-
-            <Button size="sm">Connect Wallet</Button>
           </div>
         </div>
       </div>
