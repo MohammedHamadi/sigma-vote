@@ -30,7 +30,7 @@ export default function Home() {
           <Link href="/docs">
             <Button size="lg" variant="secondary" className="h-12 px-8">
               <BookOpen className="mr-2 w-5 h-5" />
-              Read the Whitepaper
+              Read Docs
             </Button>
           </Link>
           <a href="https://github.com/MohammedHamadi/sigma-vote" target="_blank" rel="noopener noreferrer">
