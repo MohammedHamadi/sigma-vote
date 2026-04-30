@@ -1,0 +1,14 @@
+---
+title: Casting a Vote
+description: The client-side encryption and zero-knowledge proof generation process
+---
+
+# Casting a Vote
+
+When the voter is ready to vote, their browser performs the heavy cryptographic lifting.
+
+1. **Selection:** Voter selects their candidate
+2. **Encryption:** For each candidate, a vote vector element is set to $1$ (for selected) or $0$ (for unselected). Each element is encrypted using the election's Paillier public key.
+3. **ZKPs:** The browser generates binary proofs for each element and a sum proof for the entire ballot.
+4. **Submission:** The anonymous token, signature, ciphertexts, and proofs are sent to the server.
+5. **Validation:** The server verifies the token signature, checks that the token hasn't been used before, and verifies all ZKPs. If valid, the ciphertexts are stored.

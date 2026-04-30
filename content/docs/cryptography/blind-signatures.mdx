@@ -1,0 +1,13 @@
+---
+title: Blind Signatures
+description: RSA blind signature protocol
+---
+
+# RSA Blind Signatures
+
+Blind signatures allow a voter to obtain a signature on a ballot without revealing the contents of the ballot to the signer (the server). This breaks the linkage between voter identity and ballot content.
+
+The protocol works as follows:
+1. Voter blinds the token $m$: $m' \equiv m r^e \pmod{n}$
+2. Server signs the blinded token: $s' \equiv (m')^d \pmod{n}$
+3. Voter unblinds the signature: $s \equiv s' r^{-1} \pmod{n}$

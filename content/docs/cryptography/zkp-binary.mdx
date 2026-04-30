@@ -1,0 +1,10 @@
+---
+title: Disjunctive Binary Proofs
+description: Zero-Knowledge Proof that a ciphertext encrypts 0 or 1
+---
+
+# Binary Proofs (0 or 1)
+
+To ensure that a voter can only cast a valid binary vote for each candidate, we use a disjunctive Chaum-Pedersen proof. The proof demonstrates that a Paillier ciphertext $C$ encrypts either $0$ or $1$, without revealing which one.
+
+Let $C \equiv g^m r^N \pmod{N^2}$. We prove that $m \in \{0, 1\}$.

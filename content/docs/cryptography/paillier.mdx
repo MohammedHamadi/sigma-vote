@@ -1,0 +1,78 @@
+---
+title: Paillier Homomorphic Encryption
+description: A deep dive into the cryptographic engine powering SigmaVote's secure tallying.
+---
+
+import { HomomorphicAdditionDiagram } from "@/components/docs/paillier-diagram";
+
+At the core of SigmaVote's privacy guarantees lies the **Paillier Cryptosystem**, a probabilistic asymmetric algorithm for public key cryptography invented by Pascal Paillier in 1999.
+
+Unlike standard encryption schemes (like AES or RSA), Paillier possesses a unique and powerful mathematical property: **Additive Homomorphism**. This allows mathematical operations to be performed directly on ciphertexts, producing an encrypted result that matches the operation performed on the plaintexts.
+
+---
+
+## Why Paillier?
+
+In traditional electronic voting systems, the server must decrypt individual ballots to count them. This creates a massive vulnerability: the server (and any administrators with access to it) can see exactly how each person voted.
+
+With Paillier encryption, we completely eliminate this trust assumption.
+
+1. **Absolute Privacy:** Ballots are encrypted directly in the voter's browser. They are sent to the server as indistinguishable mathematical noise.
+2. **Blind Tallying:** The server aggregates the votes by multiplying the ciphertexts together.
+3. **Decentralized Trust:** The individual votes are _never_ decrypted. Only the final aggregated tally is decrypted at the end of the election.
+
+<HomomorphicAdditionDiagram />
+
+---
+
+## How It Works: The Mathematics
+
+The Paillier cryptosystem relies on the decisional composite residuosity assumption. Here is a simplified breakdown of the core mechanics.
+
+### 1. Key Generation
+
+The election authority generates a public/private keypair for the election.
+
+- **Public Key $(N, g)$**: Distributed to all voters. Used to encrypt the ballots.
+- **Private Key $(\lambda, \mu)$**: Kept strictly secret. Used _only_ at the end of the election to decrypt the final sum.
+
+### 2. Encryption
+
+To cast a vote $m$ (where $m$ is typically $0$ or $1$), the voter's browser selects a random blinding factor $r$. This randomness ensures that encrypting the same vote twice yields completely different ciphertexts (semantic security).
+
+The ciphertext $C$ is generated as:
+
+$$ C \equiv g^m \cdot r^N \pmod{N^2} $$
+
+### 3. Homomorphic Addition (The Magic)
+
+This is where the magic happens. If we have two ciphertexts, $C_1$ encrypting $m_1$ and $C_2$ encrypting $m_2$, multiplying them together yields the encryption of their sum!
+
+$$ C_1 \cdot C_2 \equiv (g^{m_1} r_1^N) \cdot (g^{m_2} r_2^N) \pmod{N^2} $$
+
+$$ C_1 \cdot C_2 \equiv g^{m_1 + m_2} \cdot (r_1 r_2)^N \pmod{N^2} $$
+
+The result is exactly the structure of a valid Paillier encryption for the message $(m_1 + m_2)$.
+
+---
+
+## Implementation in SigmaVote
+
+In SigmaVote, we leverage Paillier to construct the voting vectors.
+
+When a voter selects a candidate out of $k$ options, the browser creates an array of $k$ elements. The chosen candidate gets a $1$, and all others get a $0$.
+
+Every single element is encrypted using Paillier before leaving the browser.
+
+```typescript
+// A simplified view of our client-side encryption
+const voteVector = [0, 1, 0, 0]; // Voter chose candidate index 1
+
+const encryptedBallot = voteVector.map((vote) => {
+  return paillierEncrypt(vote, electionPublicKey);
+});
+
+// Sends [23948...n, 84392...n, 12934...n, 58392...n] to the server
+```
+
+When the election ends, the server simply multiplies the columns of ciphertexts together. The final decrypted array represents the total votes for each candidate, all achieved without ever exposing a single voter's intent.

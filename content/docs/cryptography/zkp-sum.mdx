@@ -1,0 +1,24 @@
+---
+title: Sum Validity Proof
+description: Zero-Knowledge Proof that the sum of encrypted votes equals exactly 1
+---
+
+## Proof of Sum Validity
+
+Each candidate's vote is encrypted using Paillier:
+
+$$C_i \equiv g^{m_i} r_i^N \pmod{N^2}$$
+
+### Constraining the Blinding Factors
+
+We choose $r_1, \ldots, r_{n-1}$ independently and compute:
+
+$$r_n = \left(\prod_{i=1}^{n-1} r_i\right)^{-1} \bmod N$$
+
+This ensures $\prod_{i=1}^{n} r_i \equiv 1 \pmod{N}$.
+
+### Verification
+
+The server checks:
+
+$$\prod_{i=1}^{n} C_i \equiv g^1 \equiv g \pmod{N^2}$$

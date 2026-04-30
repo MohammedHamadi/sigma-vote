@@ -56,13 +56,13 @@ async function runTests() {
   const n2 = nBig * nBig;
   const gBig = BigInt(pKeys.publicKey.g);
   const cZeroManual = (modPow(gBig, 0n, n2) * modPow(rZero, nBig, n2)) % n2;
-  const proofZero = proveZeroOrOne(cZeroManual, 0, rZero, pKeys.publicKey);
-  if (!verifyZeroOrOne(cZeroManual, proofZero, pKeys.publicKey)) throw new Error("ZKP for 0 failed");
+  const proofZero = await proveZeroOrOne(cZeroManual, 0, rZero, pKeys.publicKey);
+  if (!(await verifyZeroOrOne(cZeroManual, proofZero, pKeys.publicKey))) throw new Error("ZKP for 0 failed");
 
   const rOne = 5678n;
   const cOneManual = (modPow(gBig, 1n, n2) * modPow(rOne, nBig, n2)) % n2;
-  const proofOne = proveZeroOrOne(cOneManual, 1, rOne, pKeys.publicKey);
-  if (!verifyZeroOrOne(cOneManual, proofOne, pKeys.publicKey)) throw new Error("ZKP for 1 failed");
+  const proofOne = await proveZeroOrOne(cOneManual, 1, rOne, pKeys.publicKey);
+  if (!(await verifyZeroOrOne(cOneManual, proofOne, pKeys.publicKey))) throw new Error("ZKP for 1 failed");
 
   console.log("✅ ZKP passed!");
 

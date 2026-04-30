@@ -1,0 +1,19 @@
+---
+title: System Architecture
+description: Overview of the SigmaVote system architecture
+---
+
+# Architecture
+
+SigmaVote is built using Next.js with a modular architecture that separates the client-side cryptographic operations from the server-side validation and storage.
+
+### Flow of Operations
+
+1. **Client Browser** 
+   - Performs homomorphic operations using the *Paillier & ZKP Library*.
+   - Sends **Encrypted Ballot + ZKPs** to the Server.
+2. **Server (Next.js API Routes)** 
+   - Receives payload and performs **Verification** (ZKP validation & Blind Signature check).
+   - If valid, writes to the Database.
+3. **Database (Neon Postgres)**
+   - Stores the verified encrypted ballots permanently.

@@ -1,0 +1,14 @@
+---
+title: Registration Flow
+description: How voters register using blind signatures
+---
+
+# Voter Registration
+
+Before casting a vote, the voter must register to obtain an anonymous voting token using blind signatures.
+
+1. Voter logs in with standard authentication
+2. Voter's browser generates a random token and blinds it
+3. Server verifies voter eligibility, signs the blinded token, and marks voter as having requested a token
+4. Voter unblinds the signature locally, obtaining a valid signature on their random token
+5. The token and signature serve as the voter's anonymous credential

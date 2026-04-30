@@ -1,0 +1,13 @@
+{
+  "title": "SigmaVote",
+  "pages": [
+    "index",
+    "architecture",
+    "---Cryptography---",
+    "cryptography",
+    "---Voting Flow---",
+    "voting-flow",
+    "---User Guide---",
+    "user-guide"
+  ]
+}

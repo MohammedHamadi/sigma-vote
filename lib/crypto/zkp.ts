@@ -39,7 +39,7 @@
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /** Modular exponentiation: base^exp mod m — handles arbitrary BigInts */
-export function modPow(base: bigint, exp: bigint, mod: bigint): bigint {
+function modPow(base: bigint, exp: bigint, mod: bigint): bigint {
   if (mod === 1n) return 0n;
   let result = 1n;
   base = ((base % mod) + mod) % mod;
@@ -59,7 +59,7 @@ function extGcd(a: bigint, b: bigint): { gcd: bigint; x: bigint; y: bigint } {
 }
 
 /** Modular inverse of a mod m (throws if non-invertible) */
-export function modInverse(a: bigint, m: bigint): bigint {
+function modInverse(a: bigint, m: bigint): bigint {
   const { gcd, x } = extGcd(((a % m) + m) % m, m);
   if (gcd !== 1n) throw new Error("modInverse: not invertible");
   return ((x % m) + m) % m;
@@ -70,7 +70,7 @@ export function modInverse(a: bigint, m: bigint): bigint {
  * Falls back to a deterministic PRNG when the Web Crypto API is unavailable
  * (Node.js environments should provide globalThis.crypto).
  */
-export function randomBigInt(bits: number): bigint {
+function randomBigInt(bits: number): bigint {
   const bytes = Math.ceil(bits / 8);
   let arr: Uint8Array;
 

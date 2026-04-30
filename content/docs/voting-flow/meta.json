@@ -1,0 +1,8 @@
+{
+  "title": "Voting Flow",
+  "pages": [
+    "registration",
+    "casting-vote",
+    "tallying"
+  ]
+}

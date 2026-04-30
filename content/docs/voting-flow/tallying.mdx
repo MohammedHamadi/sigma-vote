@@ -1,0 +1,14 @@
+---
+title: Tallying Votes
+description: How homomorphic encryption is used to tally votes securely
+---
+
+# Tallying
+
+When the election ends, the system aggregates the encrypted votes using the homomorphic property of Paillier encryption.
+
+For a candidate $i$, given encrypted votes $C_{1,i}, C_{2,i}, \ldots, C_{k,i}$:
+
+$$ T_i \equiv \prod_{j=1}^{k} C_{j,i} \pmod{N^2} $$
+
+The aggregated ciphertexts $T_1, \ldots, T_n$ are then decrypted using the private key. The individual votes are never decrypted, preserving voter privacy perfectly.
