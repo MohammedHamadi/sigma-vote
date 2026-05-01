@@ -3,12 +3,35 @@ title: Registration Flow
 description: How voters register using blind signatures
 ---
 
+import { RegistrationDiagram } from '@/components/docs/registration-diagram';
+
 # Voter Registration
 
-Before casting a vote, the voter must register to obtain an anonymous voting token using blind signatures.
+Before a voter can cast a ballot, they must go through a **one-time registration process**. The goal of this process is to provide the voter with a cryptographic credential that allows them to vote anonymously later.
 
-1. Voter logs in with standard authentication
-2. Voter's browser generates a random token and blinds it
-3. Server verifies voter eligibility, signs the blinded token, and marks voter as having requested a token
-4. Voter unblinds the signature locally, obtaining a valid signature on their random token
-5. The token and signature serve as the voter's anonymous credential
+In SigmaVote, we achieve this through **RSA Blind Signatures**, which decouples your identity (who you are) from your voting credential (that you are allowed to vote).
+
+<RegistrationDiagram />
+
+## The Workflow
+
+### 1. Identity Verification
+The voter first logs into the SigmaVote platform using a standard identity provider (like OAuth or credentials). At this stage, the server knows exactly who the user is.
+
+### 2. Blind Token Generation
+The voter's browser generates a unique, random string called a **Voting Token**. To maintain privacy, the browser "blinds" this token using a random factor. This makes the token look like random data to anyone but the voter.
+
+### 3. Signature Request
+The blinded token is sent to the server. The server verifies that:
+- The user is a registered voter.
+- The user has not already requested a voting token.
+
+If everything is valid, the server signs the blinded token with its private key and marks the user as "Registered."
+
+### 4. Unblinding locally
+The browser receives the signed, blinded token and removes the blinding factor. This results in a **valid signature on the original token**. 
+
+Because of the mathematical properties of RSA, this unblinded signature is a legitimate credential that the server will recognize later, even though the server never saw the original token.
+
+## Why this is secure
+This process ensures that the server can never link your real identity to the token you use when you actually vote. You are registered as an authorized voter, but your "ballot-casting" identity remains a secret.

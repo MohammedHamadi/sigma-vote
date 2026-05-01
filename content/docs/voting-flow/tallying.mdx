@@ -3,12 +3,32 @@ title: Tallying Votes
 description: How homomorphic encryption is used to tally votes securely
 ---
 
-# Tallying
+import { TallyingDiagram } from '@/components/docs/tallying-diagram';
 
-When the election ends, the system aggregates the encrypted votes using the homomorphic property of Paillier encryption.
+# Tallying & Results
 
-For a candidate $i$, given encrypted votes $C_{1,i}, C_{2,i}, \ldots, C_{k,i}$:
+Tallying is the process where individual encrypted ballots are combined and finally decrypted to reveal the winners of the election. Thanks to the properties of Paillier encryption, this process happens **without ever decrypting a single voter's ballot**.
 
-$$ T_i \equiv \prod_{j=1}^{k} C_{j,i} \pmod{N^2} $$
+<TallyingDiagram />
 
-The aggregated ciphertexts $T_1, \ldots, T_n$ are then decrypted using the private key. The individual votes are never decrypted, preserving voter privacy perfectly.
+## The Tallying Process
+
+### 1. Homomorphic Aggregation
+Once an election is closed, the server collects all verified encrypted ballots. For each candidate, the server has a list of ciphertexts ($C_{1,j}, C_{2,j}, \ldots, C_{n,j}$).
+
+The server multiplies these ciphertexts together for each candidate $j$:
+$$\text{Total}_j = \prod_{i=1}^n C_{i,j} \pmod{N^2}$$
+
+Because Paillier is additive-homomorphic, this single "product" ciphertext now **contains the sum of all votes** for that candidate.
+
+### 2. Result Extraction
+The server now takes the aggregate ciphertext for each candidate and performs a **Threshold Decryption** (or a standard decryption if using a single authority). This reveals the final plaintext number (e.g., "543 votes").
+
+Importantly, the server *only* applies the private key to this final sum. The original, individual ballots are never decrypted, preserving voter privacy even after the election is over.
+
+### 3. Verification & Publication
+The final results are published to the SigmaVote dashboard. Voters can use their **Ballot Receipt Hash** to confirm that their encrypted ballot was part of the mathematical product used to calculate the final tally.
+
+## Key Security Features
+- **Privacy-Preserving**: Even a compromised server at the end of the election can only see the final totals, not individual votes.
+- **Verifiable**: Anyone with the public key and the list of encrypted ballots can re-calculate the product and verify it matches the published result.

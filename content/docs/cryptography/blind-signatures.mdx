@@ -1,13 +1,50 @@
 ---
 title: Blind Signatures
-description: RSA blind signature protocol
+description: RSA blind signature protocol for anonymous authentication
 ---
+
+import { BlindSignatureDiagram } from '@/components/docs/blind-signature-diagram';
 
 # RSA Blind Signatures
 
-Blind signatures allow a voter to obtain a signature on a ballot without revealing the contents of the ballot to the signer (the server). This breaks the linkage between voter identity and ballot content.
+Blind signatures are the cornerstone of **anonymous authentication** in SigmaVote. They allow a voter to obtain a digital signature from an authority without the authority ever seeing the content of the message being signed.
 
-The protocol works as follows:
-1. Voter blinds the token $m$: $m' \equiv m r^e \pmod{n}$
-2. Server signs the blinded token: $s' \equiv (m')^d \pmod{n}$
-3. Voter unblinds the signature: $s \equiv s' r^{-1} \pmod{n}$
+In our system, this is used to issue "Voting Tokens" that prove a user is authorized to vote without linking that token to the user's specific identity.
+
+<BlindSignatureDiagram />
+
+## The Core Concept
+
+Imagine placing a piece of paper and a carbon sheet inside an envelope. You give the envelope to an authority who signs the outside. When you get the envelope back and open it, the signature has been transferred through the carbon paper onto the message inside. The authority knows they signed *something*, but they don't know *what*.
+
+## Mathematical Protocol
+
+The protocol relies on the homomorphic property of RSA. Given a public key $(e, N)$ and private key $(d, N)$:
+
+### 1. Blinding (Voter)
+The voter generates a random **blinding factor** $r$ such that $\gcd(r, N) = 1$. They blind their message $m$ (typically a hashed voting token):
+$$m' \equiv m \cdot r^e \pmod{N}$$
+
+### 2. Signing (Authority)
+The authority signs the blinded message $m'$ using their private key $d$:
+$$s' \equiv (m')^d \equiv (m \cdot r^e)^d \pmod{N}$$
+$$s' \equiv m^d \cdot r^{ed} \equiv m^d \cdot r \pmod{N}$$
+
+### 3. Unblinding (Voter)
+The voter removes the blinding factor by multiplying with the modular inverse of $r$:
+$$s \equiv s' \cdot r^{-1} \equiv (m^d \cdot r) \cdot r^{-1} \equiv m^d \pmod{N}$$
+
+The result $s$ is a valid RSA signature on the original message $m$.
+
+## Security Properties
+
+- **Blindness**: The signer cannot link a specific signature to a specific blinded message they signed earlier.
+- **Unforgeability**: Only the holder of the private key $d$ can produce a valid signature, even if the voter can choose any $m$.
+
+## Implementation in SigmaVote
+
+We use **Full Domain Hashing (FDH)** to ensure that the token $m$ is properly distributed across the RSA modulus space. During the registration phase:
+1. The client generates a unique `blindToken`.
+2. The server verifies the user's identity (OAuth/Credentials).
+3. The server signs the blinded token.
+4. The client unblinds it and stores it locally as a "Right-to-Vote" credential.

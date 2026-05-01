@@ -1,10 +1,50 @@
 ---
 title: Welcome to SigmaVote
-description: Cryptographic electronic voting prototype
+description: Learn about the cryptographic foundations and architecture of SigmaVote
 ---
 
-# SigmaVote
+import { WelcomeHero } from '@/components/docs/welcome-hero';
+import { Map, Lock, Cpu, ClipboardList, Zap, Shield } from 'lucide-react';
 
-Welcome to the documentation for SigmaVote, an electronic voting platform that utilizes advanced cryptographic techniques to ensure privacy, integrity, and verifiability.
+<WelcomeHero />
 
-Check out the sections in the sidebar to learn more about the architecture, the cryptographic primitives used, the voting flow, and how to use the system.
+# Introduction
+
+Welcome to the **SigmaVote Documentation**. This portal provides an in-depth look at the architecture, cryptographic principles, and operational workflows of our secure electronic voting platform.
+
+SigmaVote is designed to bridge the gap between user-friendly web experiences and the rigorous security requirements of democratic elections. By utilizing **Paillier Homomorphic Encryption**, **Non-Interactive Zero-Knowledge Proofs (NIZKPs)**, and **RSA Blind Signatures**, we provide a system where:
+
+- **No one** knows how you voted (Privacy).
+- **Everyone** can verify the count was done correctly (Verifiability).
+- **Malicious actors** cannot change or invalidate votes (Integrity).
+
+---
+
+## <Map className="inline-block mr-2 h-5 w-5 text-primary" /> Documentation Roadmap
+
+Explore the different facets of the SigmaVote system:
+
+### <Lock className="inline-block mr-2 h-4 w-4 text-primary" /> Cryptography
+Deep dive into the [mathematical foundations](/docs/cryptography/paillier). Learn how we use Paillier encryption for tallying and Zero-Knowledge Proofs to ensure ballot validity without decrypting individual votes.
+
+### <Cpu className="inline-block mr-2 h-4 w-4 text-primary" /> Architecture
+An overview of the [system design](/docs/architecture), from the Next.js frontend and PostgreSQL database to the distributed key-sharing mechanism used for secure tallying.
+
+### <ClipboardList className="inline-block mr-2 h-4 w-4 text-primary" /> Voting Flow
+Step-by-step [guides](/docs/voting-flow/registration) on how a voter moves through the system: from anonymous registration via blind signatures to casting an encrypted ballot and verifying the final results.
+
+---
+
+## <Zap className="inline-block mr-2 h-5 w-5 text-primary" /> Quick Start
+
+If you are a developer looking to understand how the cryptographic pieces fit together, we recommend starting with these key pages:
+
+1.  **[Paillier Encryption](/docs/cryptography/paillier)**: Understand our core encryption scheme.
+2.  **[Blind Signatures](/docs/cryptography/blind-signatures)**: Learn how we achieve voter anonymity.
+3.  **[Disjunctive Proofs](/docs/cryptography/zkp-binary)**: See how we prevent "over-voting" and invalid ballots.
+
+---
+
+## <Shield className="inline-block mr-2 h-5 w-5 text-primary" /> Our Philosophy
+
+We believe that for electronic voting to be trusted, it must be **Open**, **Verifiable**, and **Mathematically Sound**. SigmaVote isn't just a web app; it's a cryptographic protocol designed to protect the most fundamental unit of democracy: the individual vote.

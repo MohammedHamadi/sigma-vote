@@ -3,22 +3,53 @@ title: Sum Validity Proof
 description: Zero-Knowledge Proof that the sum of encrypted votes equals exactly 1
 ---
 
-## Proof of Sum Validity
+import { BallotValidityDiagram } from '@/components/docs/ballot-validity-diagram';
 
-Each candidate's vote is encrypted using Paillier:
+# Sum Validity Proofs
 
-$$C_i \equiv g^{m_i} r_i^N \pmod{N^2}$$
+Even if we prove that each individual vote is a "0" or a "1", a voter could still cheat by selecting multiple candidates (e.g., voting "1" for everyone). To prevent this, SigmaVote must verify that the **sum of all votes** in a single ballot is exactly **1**.
 
-### Constraining the Blinding Factors
+<BallotValidityDiagram />
 
-We choose $r_1, \ldots, r_{n-1}$ independently and compute:
+## The Homomorphic Sum
 
-$$r_n = \left(\prod_{i=1}^{n-1} r_i\right)^{-1} \bmod N$$
+Recall that Paillier encryption is additive-homomorphic. If we have $k$ ciphertexts $C_1, C_2, \ldots, C_k$ representing votes for each candidate:
 
-This ensures $\prod_{i=1}^{n} r_i \equiv 1 \pmod{N}$.
+$$C_i = g^{m_i} \cdot r_i^N \pmod{N^2}$$
 
-### Verification
+The product of these ciphertexts encrypts the sum of the messages:
 
-The server checks:
+$$\prod_{i=1}^k C_i = g^{\sum m_i} \cdot \left(\prod r_i\right)^N \pmod{N^2}$$
 
-$$\prod_{i=1}^{n} C_i \equiv g^1 \equiv g \pmod{N^2}$$
+## The Validity Condition
+
+For a ballot to be valid, we require:
+$$\sum_{i=1}^k m_i = 1$$
+
+Therefore, the product of the ciphertexts must be an encryption of $1$:
+$$\prod_{i=1}^k C_i \equiv g^1 \cdot R^N \pmod{N^2}$$
+
+## Implementation: Blinding Factor Constraint
+
+A full Zero-Knowledge Proof that the product encrypts $1$ is possible but computationally expensive for the client. SigmaVote uses a more efficient approach by **constraining the randomness**.
+
+### 1. Client Side
+When the voter creates their ballot:
+1. They pick random $r_1, r_2, \ldots, r_{k-1}$ for the first $k-1$ candidates.
+2. They calculate the required randomness for the last candidate ($k$) to make the total product of randomness equal to $1$:
+   $$r_k = \left(\prod_{i=1}^{k-1} r_i\right)^{-1} \pmod N$$
+3. They use these $r_i$ values to encrypt their votes.
+
+### 2. Server Side
+The server simply computes the product of all ciphertexts in the ballot:
+$$\text{Product} = \prod C_i \pmod{N^2}$$
+If the ballot is valid and the randomness was constrained correctly, the result **must** be:
+$$\text{Product} \equiv g^1 \cdot (1)^N \equiv g \pmod{N^2}$$
+
+## Why this works
+
+By requiring $\prod r_i \equiv 1$, we eliminate the $R^N$ term from the verification. The server only needs to check if the product equals $g$.
+
+- **Security**: The server still cannot see which $m_i$ was $1$.
+- **Integrity**: A voter cannot vote for two candidates, because if they did, the product would be $g^2 \pmod{N^2}$ (or higher), which is easily detectable.
+- **Privacy**: The constrained randomness $r_k$ is still computationally indistinguishable from a random value to anyone without the private key.

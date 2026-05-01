@@ -1,14 +1,42 @@
 ---
 title: Casting a Vote
-description: The client-side encryption and zero-knowledge proof generation process
+description: The process of encrypting and submitting a ballot
 ---
+
+import { CastingVoteDiagram } from '@/components/docs/casting-vote-diagram';
 
 # Casting a Vote
 
-When the voter is ready to vote, their browser performs the heavy cryptographic lifting.
+Once a voter is registered and holds a valid anonymous credential, they can participate in any active election. The casting process is designed to be **browser-native**, meaning all sensitive cryptographic operations happen on the user's machine.
 
-1. **Selection:** Voter selects their candidate
-2. **Encryption:** For each candidate, a vote vector element is set to $1$ (for selected) or $0$ (for unselected). Each element is encrypted using the election's Paillier public key.
-3. **ZKPs:** The browser generates binary proofs for each element and a sum proof for the entire ballot.
-4. **Submission:** The anonymous token, signature, ciphertexts, and proofs are sent to the server.
-5. **Validation:** The server verifies the token signature, checks that the token hasn't been used before, and verifies all ZKPs. If valid, the ciphertexts are stored.
+<CastingVoteDiagram />
+
+## The Casting Process
+
+### 1. Selection & Encryption
+When you select a candidate in the SigmaVote UI, the browser constructs a "Vote Vector." If there are 4 candidates and you choose the second one, your vector looks like `[0, 1, 0, 0]`.
+
+Each element of this vector is individually encrypted using the **Election Public Key** and the Paillier cryptosystem. A unique random "blinding factor" is used for every encryption to ensure that even identical votes look completely different.
+
+### 2. Generating Proofs (ZKP)
+To prevent malicious users from voting for multiple candidates or submitting invalid values, the browser generates **Zero-Knowledge Proofs**:
+- **Binary Proofs**: Prove that each encrypted number is exactly a $0$ or a $1$.
+- **Sum Proof**: Proves that the total sum of the encrypted vector is exactly $1$.
+
+These proofs allow the server to verify your ballot is mathematically correct without needing to decrypt it.
+
+### 3. Submission
+The final payload contains:
+- The **Encrypted Ciphertexts** (your ballot).
+- The **Zero-Knowledge Proofs**.
+- Your **Anonymous Credential** (Token + Blind Signature).
+
+This payload is sent to the `/api/vote` endpoint. Since you are using an anonymous credential, the server can verify you are an authorized voter but cannot know which specific user you are.
+
+### 4. Server Validation & Receipt
+The server performs a final check:
+1. It validates the **Blind Signature** against its public key.
+2. It verifies the **ZKPs** to ensure ballot integrity.
+3. It checks that this specific **Token** has not voted in this election before (Double-spending protection).
+
+If all checks pass, the ballot is stored in the database, and you receive a **Ballot Receipt Hash**, which you can use to verify your vote was included in the final tally.
