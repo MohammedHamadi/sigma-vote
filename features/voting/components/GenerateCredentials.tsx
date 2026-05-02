@@ -2,11 +2,33 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, KeyRound, Lock, FileKey, CheckCircle2, Copy } from "lucide-react";
-import { requestBlindSignature, checkBlindSignatureStatus } from "@/features/voting/actions";
-import { generateAndBlindToken, unblindAndPackCredential } from "@/lib/crypto/blind-sig-client";
+import {
+  Loader2,
+  KeyRound,
+  Lock,
+  FileKey,
+  CheckCircle2,
+  Copy,
+  Shield,
+  ShieldCheck,
+} from "lucide-react";
+import {
+  requestBlindSignature,
+  checkBlindSignatureStatus,
+} from "@/features/voting/actions";
+import {
+  generateAndBlindToken,
+  unblindAndPackCredential,
+} from "@/lib/crypto/blind-sig-client";
 
 export function GenerateCredentials({
   electionId,
@@ -38,37 +60,39 @@ export function GenerateCredentials({
       setIsDialogOpen(true);
       setError(null);
       setStep(1);
-      setProgress(10); // Start progress
+      setProgress(10);
 
-      // Step 1: Generate token and blind it locally
       await new Promise((resolve) => setTimeout(resolve, 800));
       setProgress(30);
       const rsaPubKey = { e: rsaPubE, n: rsaPubN };
-      const { token, blindingFactor, blindedToken } = generateAndBlindToken(rsaPubKey);
+      const { token, blindingFactor, blindedToken } =
+        generateAndBlindToken(rsaPubKey);
 
-      // Step 2: Request blind signature from server
       setStep(2);
       setProgress(50);
-      const res = await requestBlindSignature(electionId.toString(), blindedToken.toString());
+      const res = await requestBlindSignature(
+        electionId.toString(),
+        blindedToken.toString(),
+      );
       setProgress(70);
 
-      // Step 3: Unblind signature
       setStep(3);
       await new Promise((resolve) => setTimeout(resolve, 800));
-      const { token: unblindedTokenStr, signature: unblindedSigStr, credential } = unblindAndPackCredential(
-        res.signature,
-        blindingFactor,
-        token,
-        { e: res.rsaPubE, n: res.rsaPubN }
-      );
-      
+      const {
+        token: unblindedTokenStr,
+        signature: unblindedSigStr,
+        credential,
+      } = unblindAndPackCredential(res.signature, blindingFactor, token, {
+        e: res.rsaPubE,
+        n: res.rsaPubN,
+      });
+
       setProgress(100);
       setRawToken(unblindedTokenStr);
       setRawSignature(unblindedSigStr);
       setCredentialBlob(credential);
-      setStep(4); // Success!
+      setStep(4);
       setHasSignature(true);
-      
     } catch (err: any) {
       console.error("Error generating credentials:", err);
       setError(err.message || "Failed to generate credentials");
@@ -84,126 +108,180 @@ export function GenerateCredentials({
   };
 
   if (hasSignature === null) {
-    return <Button disabled>Loading status...</Button>;
+    return (
+      <Button disabled variant="outline" className="opacity-50">
+        Checking status...
+      </Button>
+    );
   }
 
   return (
-    <div>
+    <div className="w-full">
       {hasSignature ? (
-        <div className="p-4 border border-white/10 bg-white/5 rounded-xl mb-6">
-          <div className="flex items-center gap-2 text-success mb-2">
-            <CheckCircle2 className="w-5 h-5" />
-            <h3 className="font-semibold">Credentials Generated</h3>
+        <div className="p-6 bg-success/5 border border-success/20 rounded-xl mb-8 relative overflow-hidden group">
+          <div className="absolute inset-0 bg-success/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div className="flex items-start gap-4 relative z-10">
+            <div className="p-3 bg-success/10 rounded-lg text-success">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg text-success leading-tight mb-1">
+                Credentials Issued
+              </h3>
+              <p className="text-muted-foreground text-sm leading-relaxed max-w-md">
+                You have already generated anonymous credentials for this
+                election. Ensure you have them saved to proceed.
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            You have already generated anonymous credentials for this election. 
-            If you have copied them, you can proceed to the voting booth.
-          </p>
         </div>
       ) : (
-        <Button onClick={handleGenerate} size="lg" className="mb-6">
-          <KeyRound className="mr-2 h-4 w-4" />
-          Generate Anonymous Credentials
-        </Button>
+        <div className="p-8 bg-[#121212] border border-[#262626] rounded-xl hover:border-primary/30 transition-all group relative overflow-hidden mb-8">
+          <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div className="flex flex-col items-center justify-between gap-8 relative z-10">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-xl font-bold text-white mb-2 leading-tight">
+                Anonymous Credential Generation
+              </h3>
+            </div>
+            <div className="shrink-0">
+              <Button
+                onClick={handleGenerate}
+                className="bg-[#1D84DD] hover:bg-[#1D84DD]/90 text-white font-bold py-6 px-8 shadow-[0_0_20px_rgba(29,132,221,0.2)] whitespace-nowrap"
+              >
+                <KeyRound className="mr-2 h-5 w-5" />
+                Generate Credentials
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md bg-[#111415] border-[#262626] shadow-2xl">
           {error ? (
-            <>
+            <div className="p-6 text-center">
+              <div className="mx-auto bg-destructive/10 p-4 rounded-full mb-4 w-fit">
+                <Lock className="h-8 w-8 text-destructive" />
+              </div>
               <DialogHeader>
-                <DialogTitle className="text-destructive text-center">Error</DialogTitle>
-                <DialogDescription className="text-center mt-2 text-red-400">
+                <DialogTitle className="text-2xl font-bold text-white mb-2">
+                  Access Denied
+                </DialogTitle>
+                <DialogDescription className="text-muted-foreground">
                   {error}
                 </DialogDescription>
               </DialogHeader>
-              <DialogFooter className="sm:justify-center mt-4">
-                <Button onClick={() => setIsDialogOpen(false)} variant="outline">Close</Button>
-              </DialogFooter>
-            </>
+              <Button
+                onClick={() => setIsDialogOpen(false)}
+                variant="outline"
+                className="w-full mt-8 border-white/10 hover:bg-white/5"
+              >
+                Dismiss
+              </Button>
+            </div>
           ) : step === 1 ? (
-            <>
-              <DialogHeader>
-                <div className="mx-auto bg-primary/10 p-3 rounded-full mb-4 w-fit">
-                  <Loader2 className="h-6 w-6 text-primary animate-spin" />
-                </div>
-                <DialogTitle className="text-center">Generating random ballot token...</DialogTitle>
-                <DialogDescription className="text-center mt-2">
-                  Creating random token 'T' and blinding factor 'r' locally in browser.
+            <div className="p-6">
+              <div className="mx-auto bg-primary/10 p-4 rounded-full mb-6 w-fit">
+                <Loader2 className="h-10 w-10 text-primary animate-spin" />
+              </div>
+              <DialogHeader className="mb-8">
+                <DialogTitle className="text-2xl font-bold text-center text-white mb-2">
+                  Generating Ballot Token
+                </DialogTitle>
+                <DialogDescription className="text-center text-muted-foreground">
+                  Creating random token 'T' and blinding factor 'r' locally...
                 </DialogDescription>
               </DialogHeader>
-              <div className="py-6">
-                <Progress value={progress} className="h-2" />
-              </div>
-            </>
+              <Progress value={progress} className="h-2 bg-white/5" />
+            </div>
           ) : step === 2 ? (
-            <>
-              <DialogHeader>
-                <div className="mx-auto bg-purple-accent/10 p-3 rounded-full mb-4 w-fit">
-                  <Lock className="h-6 w-6 text-purple-accent animate-pulse" />
-                </div>
-                <DialogTitle className="text-center">Blinding and requesting signature...</DialogTitle>
-                <DialogDescription className="text-center mt-2">
-                  Computing blinded token T' and requesting server signature S'.
+            <div className="p-6">
+              <div className="mx-auto bg-purple-accent/10 p-4 rounded-full mb-6 w-fit">
+                <Shield className="h-10 w-10 text-purple-accent animate-pulse" />
+              </div>
+              <DialogHeader className="mb-8">
+                <DialogTitle className="text-2xl font-bold text-center text-white mb-2">
+                  Requesting Signature
+                </DialogTitle>
+                <DialogDescription className="text-center text-muted-foreground">
+                  Computing blinded token T' and requesting authority signature
+                  S'...
                 </DialogDescription>
               </DialogHeader>
-              <div className="py-6">
-                <Progress value={progress} className="h-2" />
-              </div>
-            </>
+              <Progress value={progress} className="h-2 bg-white/5" />
+            </div>
           ) : step === 3 ? (
-            <>
-              <DialogHeader>
-                <div className="mx-auto bg-primary/10 p-3 rounded-full mb-4 w-fit">
-                  <FileKey className="h-6 w-6 text-primary animate-spin" />
-                </div>
-                <DialogTitle className="text-center">Unblinding signature...</DialogTitle>
-                <DialogDescription className="text-center mt-2">
-                  Removing blinding factor to get valid signature S on your token T.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="py-6">
-                <Progress value={progress} className="h-2" />
+            <div className="p-6">
+              <div className="mx-auto bg-primary/10 p-4 rounded-full mb-6 w-fit">
+                <FileKey className="h-10 w-10 text-primary animate-spin" />
               </div>
-            </>
-          ) : step === 4 ? (
-            <>
-              <DialogHeader>
-                <div className="mx-auto bg-success/10 p-3 rounded-full mb-4 w-fit">
-                  <CheckCircle2 className="h-8 w-8 text-success" />
-                </div>
-                <DialogTitle className="text-center">Credentials Ready!</DialogTitle>
-                <DialogDescription className="text-center mt-2">
-                  Save these credentials safely! You will need them to vote. They cannot be regenerated.
+              <DialogHeader className="mb-8">
+                <DialogTitle className="text-2xl font-bold text-center text-white mb-2">
+                  Unblinding Signature
+                </DialogTitle>
+                <DialogDescription className="text-center text-muted-foreground">
+                  Removing blinding factor to isolate valid signature S...
                 </DialogDescription>
               </DialogHeader>
-              
-              <div className="mt-4 w-full min-w-0">
-                <div className="bg-muted p-3 rounded-md border border-white/10 flex items-center justify-between gap-3 w-full min-w-0">
-                  <p className="text-xs font-mono text-muted-foreground truncate flex-1 min-w-0">
-                    {credentialBlob}
-                  </p>
-                  <Button 
-                    variant="secondary" 
-                    size="icon" 
-                    className="h-8 w-8 shrink-0"
+              <Progress value={progress} className="h-2 bg-white/5" />
+            </div>
+          ) : step === 4 ? (
+            <div className="p-6">
+              <div className="mx-auto bg-success/10 p-4 rounded-full mb-6 w-fit">
+                <ShieldCheck className="h-12 w-12 text-success" />
+              </div>
+              <DialogHeader className="mb-6">
+                <DialogTitle className="text-2xl font-bold text-center text-white mb-2">
+                  Credentials Secured
+                </DialogTitle>
+                <DialogDescription className="text-center text-muted-foreground">
+                  Save these credentials safely! You will need them to cast your
+                  vote anonymously.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="mt-8 space-y-4 max-w-full overflow-hidden">
+                <div className="bg-black/60 p-4 rounded-xl border border-white/10 flex items-center gap-3 w-full overflow-hidden">
+                  <div className="flex-1 min-w-0 bg-white/5 px-4 py-3 rounded-lg border border-white/5 overflow-hidden">
+                    <p className="text-xs font-mono text-muted-foreground truncate opacity-80 select-all">
+                      {credentialBlob
+                        ? `${credentialBlob.slice(0, 12)}...`
+                        : "Generating..."}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`h-11 w-11 shrink-0 rounded-lg transition-all ${copied ? "bg-success/20 text-success border border-success/30" : "bg-[#1D84DD] text-white hover:bg-[#1D84DD]/90 shadow-lg"}`}
                     onClick={handleCopy}
+                    title="Copy to clipboard"
                   >
-                    {copied ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+                    {copied ? (
+                      <CheckCircle2 className="h-5 w-5" />
+                    ) : (
+                      <Copy className="h-5 w-5" />
+                    )}
                   </Button>
                 </div>
-                <div className="mt-4 text-xs text-muted-foreground flex justify-between px-1">
-                  <span>Token: {rawToken?.substring(0, 16)}...</span>
-                  <span>Sig: {rawSignature?.substring(0, 16)}...</span>
-                </div>
-              </div>
 
-              <DialogFooter className="sm:justify-center mt-6">
-                <Button onClick={() => setIsDialogOpen(false)} className="w-full sm:w-auto">
-                  I have copied my credentials
+                <div className="flex flex-col sm:flex-row justify-between gap-2 px-1 text-[9px] font-mono uppercase tracking-widest text-muted-foreground opacity-50 overflow-hidden">
+                  <span className="truncate">
+                    TOKEN: {rawToken?.substring(0, 6)}...
+                  </span>
+                  <span className="truncate text-right">
+                    SIG: {rawSignature?.substring(0, 6)}...
+                  </span>
+                </div>
+
+                <Button
+                  onClick={() => setIsDialogOpen(false)}
+                  className="w-full bg-[#1D84DD] hover:bg-[#1D84DD]/90 text-white font-bold py-6 mt-4"
+                >
+                  I have saved my credentials
                 </Button>
-              </DialogFooter>
-            </>
+              </div>
+            </div>
           ) : null}
         </DialogContent>
       </Dialog>

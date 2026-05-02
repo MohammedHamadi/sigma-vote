@@ -1,26 +1,16 @@
 import Link from "next/link";
-import { Lock, ShieldCheck } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="border-t border-border/40 py-8 md:py-12 mt-16">
-      <div className="container mx-auto px-4 md:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex flex-col items-center md:items-start gap-1">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-success" />
-            <span className="font-semibold text-sm">SigmaVote Platform</span>
-          </div>
-          <p className="text-xs text-muted-foreground text-center md:text-left max-w-sm">
-            Cryptographic electronic voting prototype utilizing Homomorphic Encryption and Zero-Knowledge Proofs for verifiable, private elections.
-          </p>
-        </div>
-        
-        <div className="flex gap-6 text-sm text-muted-foreground">
-          <Link href="#" className="hover:text-foreground transition-colors flex items-center gap-1">
-            <Lock className="h-3 w-3" /> Security
-          </Link>
-          <Link href="#" className="hover:text-foreground transition-colors">Privacy Policy</Link>
-          <Link href="#" className="hover:text-foreground transition-colors">Terms of Service</Link>
+    <footer className="w-full py-12 mt-auto bg-[#080808] border-t border-zinc-900 font-serif text-sm uppercase tracking-widest text-primary">
+      <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+        <p className="text-zinc-500 hover:text-primary transition-colors cursor-pointer text-center md:text-left">
+          © 2024 SigmaVote. Mathematical Certainty in Democracy.
+        </p>
+        <div className="flex space-x-6">
+          <Link href="#" className="text-zinc-500 hover:text-primary transition-colors hover:underline underline-offset-4 cursor-pointer">Security</Link>
+          <Link href="#" className="text-zinc-500 hover:text-primary transition-colors hover:underline underline-offset-4 cursor-pointer">Privacy</Link>
+          <Link href="#" className="text-zinc-500 hover:text-primary transition-colors hover:underline underline-offset-4 cursor-pointer">Terms</Link>
         </div>
       </div>
     </footer>

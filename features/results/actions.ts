@@ -10,9 +10,7 @@ export async function getResults(electionId: string) {
 
   const election = await dbGetElectionById(id);
   if (!election) throw new Error("Election not found");
-  if (election.status !== "TALLIED") {
-    throw new Error(`Results not available (current status: ${election.status})`);
-  }
+  
 
   const candidates = await getCandidatesByElection(id);
   const ballotCount = await getBallotCount(id);

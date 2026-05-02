@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
-import { Archivo } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 
 import 'fumadocs-ui/style.css';
 import "./globals.css";
-const archivo = Archivo({
-  variable: "--font-sans",
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
+
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
 });
 
@@ -13,7 +19,6 @@ export const metadata: Metadata = {
   description: "Cryptographic electronic voting prototype using Homomorphic Encryption & ZKPs.",
 };
 
-import { RootProvider } from 'fumadocs-ui/provider/next';
 
 export default function RootLayout({
   children,
@@ -22,11 +27,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${archivo.variable} font-sans antialiased`}>
-        <RootProvider theme={{ forcedTheme: 'dark' }}>
-            {children}
-        </RootProvider>
+      <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans antialiased`}>
+        {children}
       </body>
     </html>
   );
 }
+

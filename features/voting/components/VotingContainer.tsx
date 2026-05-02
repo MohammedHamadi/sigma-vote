@@ -24,7 +24,7 @@ export function VotingContainer({
 
   if (!credentials) {
     return (
-      <div className="mt-8">
+      <div className="mt-8 mx-auto">
         <CredentialInput 
           electionId={electionId} 
           onValidCredentials={handleValidCredentials} 
@@ -34,7 +34,7 @@ export function VotingContainer({
   }
 
   return (
-    <div className="mt-8">
+    <div className="mt-8 mx-auto">
       <VotingWizard
         electionId={electionId}
         candidates={candidates}
