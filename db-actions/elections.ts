@@ -1,8 +1,19 @@
 import { db } from "@/db";
-import { elections, type Election, type NewElection } from "@/db/schema";
+import {
+  elections,
+  candidates,
+  keyShares,
+  ballots,
+  usedTokens,
+  blindSigLog,
+  type Election,
+  type NewElection,
+} from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-export async function createElection(data: Omit<NewElection, "id" | "createdAt">): Promise<Election> {
+export async function createElection(
+  data: Omit<NewElection, "id" | "createdAt">,
+): Promise<Election> {
   try {
     const [result] = await db.insert(elections).values(data).returning();
     if (!result) throw new Error("Failed to create election");
@@ -22,9 +33,15 @@ export async function getElections(): Promise<Election[]> {
   }
 }
 
-export async function getElectionById(id: number): Promise<Election | undefined> {
+export async function getElectionById(
+  id: number,
+): Promise<Election | undefined> {
   try {
-    const [result] = await db.select().from(elections).where(eq(elections.id, id)).limit(1);
+    const [result] = await db
+      .select()
+      .from(elections)
+      .where(eq(elections.id, id))
+      .limit(1);
     return result;
   } catch (err) {
     console.error(`[db-actions] Error getting election by id ${id}:`, err);
@@ -32,16 +49,27 @@ export async function getElectionById(id: number): Promise<Election | undefined>
   }
 }
 
-export async function getElectionsByStatus(status: string): Promise<Election[]> {
+export async function getElectionsByStatus(
+  status: string,
+): Promise<Election[]> {
   try {
-    return await db.select().from(elections).where(eq(elections.status, status));
+    return await db
+      .select()
+      .from(elections)
+      .where(eq(elections.status, status));
   } catch (err) {
-    console.error(`[db-actions] Error getting elections by status ${status}:`, err);
+    console.error(
+      `[db-actions] Error getting elections by status ${status}:`,
+      err,
+    );
     throw err;
   }
 }
 
-export async function updateElectionStatus(id: number, status: string): Promise<Election> {
+export async function updateElectionStatus(
+  id: number,
+  status: string,
+): Promise<Election> {
   try {
     const [result] = await db
       .update(elections)
@@ -64,7 +92,7 @@ export async function updateElectionKeys(
     rsaPubE: string;
     rsaPubN: string;
     rsaPrivD: string;
-  }
+  },
 ): Promise<Election> {
   try {
     const [result] = await db
@@ -83,7 +111,7 @@ export async function updateElectionKeys(
 export async function updateElectionTimes(
   id: number,
   startTime: Date,
-  endTime: Date
+  endTime: Date,
 ): Promise<Election> {
   try {
     const [result] = await db
@@ -99,7 +127,10 @@ export async function updateElectionTimes(
   }
 }
 
-export async function updateElectionResults(id: number, resultsJson: string): Promise<Election> {
+export async function updateElectionResults(
+  id: number,
+  resultsJson: string,
+): Promise<Election> {
   try {
     const [result] = await db
       .update(elections)
@@ -121,6 +152,16 @@ export async function deleteElection(id: number): Promise<void> {
     if (election.status !== "SETUP") {
       throw new Error("Can only delete elections in SETUP status");
     }
+
+    // Cascade delete related records (order matters due to FK constraints)
+    // Delete in reverse order of dependencies
+    await db.delete(usedTokens).where(eq(usedTokens.electionId, id));
+    await db.delete(blindSigLog).where(eq(blindSigLog.electionId, id));
+    await db.delete(ballots).where(eq(ballots.electionId, id));
+    await db.delete(keyShares).where(eq(keyShares.electionId, id));
+    await db.delete(candidates).where(eq(candidates.electionId, id));
+
+    // Finally delete the election
     await db.delete(elections).where(eq(elections.id, id));
   } catch (err) {
     console.error(`[db-actions] Error deleting election ${id}:`, err);
@@ -130,7 +171,9 @@ export async function deleteElection(id: number): Promise<void> {
 
 export async function updateElectionDetails(
   id: number,
-  data: Partial<Pick<NewElection, "title" | "description" | "threshold" | "totalShares">>
+  data: Partial<
+    Pick<NewElection, "title" | "description" | "threshold" | "totalShares">
+  >,
 ): Promise<Election> {
   try {
     const [result] = await db

@@ -13,7 +13,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen pt-20">
       <aside className="w-64 border-r p-4">
         <h2 className="text-lg font-semibold mb-4">Admin</h2>
         <AdminSidebar />

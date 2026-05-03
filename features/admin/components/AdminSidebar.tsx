@@ -6,11 +6,23 @@ export function AdminSidebar() {
       <Link href="/admin" className="block px-3 py-2 rounded hover:bg-muted">
         Dashboard
       </Link>
-      <Link href="/admin/elections" className="block px-3 py-2 rounded hover:bg-muted">
+      <Link
+        href="/admin/elections"
+        className="block px-3 py-2 rounded hover:bg-muted"
+      >
         Manage Elections
       </Link>
-      <Link href="/admin/elections/create" className="block px-3 py-2 rounded hover:bg-muted">
+      <Link
+        href="/admin/elections/create"
+        className="block px-3 py-2 rounded hover:bg-muted"
+      >
         Create Election
+      </Link>
+      <Link
+        href="/admin/voters"
+        className="block px-3 py-2 rounded hover:bg-muted"
+      >
+        Voters
       </Link>
     </nav>
   );

@@ -12,9 +12,11 @@ export async function Navbar() {
       <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
         <Link href="/" className="flex items-center space-x-2">
           <Shield className="h-6 w-6 text-primary" />
-          <span className="text-2xl font-bold tracking-tighter text-white font-serif">SigmaVote</span>
+          <span className="text-2xl font-bold tracking-tighter text-white font-serif">
+            SigmaVote
+          </span>
         </Link>
-        
+
         <nav className="hidden md:flex space-x-8">
           <Link
             href="/elections"
@@ -29,7 +31,7 @@ export async function Navbar() {
             Docs
           </Link>
           <Link
-            href="/results"
+            href="/elections"
             className="text-zinc-400 font-medium hover:text-white transition-colors hover:bg-white/5 rounded-lg px-3 py-2 font-serif text-sm antialiased active:scale-95 duration-200"
           >
             Results
@@ -37,7 +39,11 @@ export async function Navbar() {
         </nav>
 
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="icon" className="hover:bg-white/5 rounded-full p-2 active:scale-95 transition-transform duration-200 text-primary">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hover:bg-white/5 rounded-full p-2 active:scale-95 transition-transform duration-200 text-primary"
+          >
             <FileCheck className="w-6 h-6" />
           </Button>
 
@@ -48,7 +54,12 @@ export async function Navbar() {
                 <span className="hidden sm:inline">{session.user.name}</span>
               </div>
               <form action={signOutAction}>
-                <Button variant="ghost" size="icon" type="submit" className="hover:bg-white/5 rounded-full p-2 active:scale-95 transition-transform duration-200 text-primary">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="submit"
+                  className="hover:bg-white/5 rounded-full p-2 active:scale-95 transition-transform duration-200 text-primary"
+                >
                   <LogOut className="w-6 h-6" />
                 </Button>
               </form>

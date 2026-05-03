@@ -4,8 +4,12 @@ import { auth } from "@/auth";
 import { getElectionById as dbGetElectionById } from "@/db-actions/elections";
 import { hasVoterReceivedSig, logBlindSig } from "@/db-actions/blindSigLog";
 import { signBlinded } from "@/lib/crypto/blind-signature";
+import { validateElectionWindow } from "@/lib/db-utils";
 
-export async function requestBlindSignature(electionId: string, blindedToken: string) {
+export async function requestBlindSignature(
+  electionId: string,
+  blindedToken: string,
+) {
   const session = await auth();
   if (!session?.user?.id) {
     throw new Error("Not authenticated");
@@ -16,14 +20,21 @@ export async function requestBlindSignature(electionId: string, blindedToken: st
 
   const election = await dbGetElectionById(id);
   if (!election) throw new Error("Election not found");
-  if (election.status !== "OPEN") {
-    throw new Error(`Election is not open (current status: ${election.status})`);
+  if (!validateElectionWindow(election)) {
+    if (election.status !== "OPEN") {
+      throw new Error(
+        `Election is not open (current status: ${election.status})`,
+      );
+    }
+    throw new Error("Election is outside its scheduled voting window");
   }
 
   const voterId = parseInt(session.user.id, 10);
   const alreadySigned = await hasVoterReceivedSig(id, voterId);
   if (alreadySigned) {
-    throw new Error("Voter has already received a blind signature for this election");
+    throw new Error(
+      "Voter has already received a blind signature for this election",
+    );
   }
 
   if (!election.rsaPrivD) {
@@ -36,14 +47,16 @@ export async function requestBlindSignature(electionId: string, blindedToken: st
 
   await logBlindSig(id, voterId);
 
-  return { 
+  return {
     signature: signature.toString(),
     rsaPubE: election.rsaPubE,
     rsaPubN: election.rsaPubN,
   };
 }
 
-export async function checkBlindSignatureStatus(electionId: string): Promise<{ hasSignature: boolean }> {
+export async function checkBlindSignatureStatus(
+  electionId: string,
+): Promise<{ hasSignature: boolean }> {
   const session = await auth();
   if (!session?.user?.id) {
     return { hasSignature: false };
@@ -54,18 +67,25 @@ export async function checkBlindSignatureStatus(electionId: string): Promise<{ h
 
   const voterId = parseInt(session.user.id, 10);
   const hasSignature = await hasVoterReceivedSig(id, voterId);
-  
+
   return { hasSignature };
 }
 
 import { isTokenUsedInElection } from "@/db-actions/usedTokens";
 import { verifySignature } from "@/lib/crypto/blind-signature";
 
-export async function verifyVotingCredential(electionId: number, token: string, signature: string) {
+export async function verifyVotingCredential(
+  electionId: number,
+  token: string,
+  signature: string,
+) {
   const election = await dbGetElectionById(electionId);
   if (!election) throw new Error("Election not found");
-  if (election.status !== "OPEN") {
-    throw new Error("Election is not open");
+  if (!validateElectionWindow(election)) {
+    if (election.status !== "OPEN") {
+      throw new Error("Election is not open");
+    }
+    throw new Error("Election is outside its scheduled voting window");
   }
 
   const tokenBigInt = BigInt(token);

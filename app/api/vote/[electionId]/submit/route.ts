@@ -5,24 +5,35 @@ import { insertBallot } from "@/db-actions/ballots";
 import { isTokenUsedInElection, markTokenUsed } from "@/db-actions/usedTokens";
 import { verifySignature } from "@/lib/crypto/blind-signature";
 import { verifyZeroOrOne } from "@/lib/crypto/zkp";
+import { validateElectionWindow } from "@/lib/db-utils";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ electionId: string }> }
+  { params }: { params: Promise<{ electionId: string }> },
 ) {
   try {
     const { electionId } = await params;
     const id = parseInt(electionId, 10);
     if (isNaN(id)) {
-      return NextResponse.json({ error: "Invalid election ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid election ID" },
+        { status: 400 },
+      );
     }
 
     const election = await getElectionById(id);
     if (!election) {
-      return NextResponse.json({ error: "Election not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Election not found" },
+        { status: 404 },
+      );
     }
-    if (election.status !== "OPEN") {
-      return NextResponse.json({ error: "Election is not open" }, { status: 403 });
+    if (!validateElectionWindow(election)) {
+      const reason =
+        election.status !== "OPEN"
+          ? "Election is not open"
+          : "Election is outside its scheduled voting window";
+      return NextResponse.json({ error: reason }, { status: 403 });
     }
 
     const body = await request.json();
@@ -35,8 +46,11 @@ export async function POST(
 
     if (!token || !signature || !ciphertexts || !proofs) {
       return NextResponse.json(
-        { error: "Missing required fields: token, signature, ciphertexts, proofs" },
-        { status: 400 }
+        {
+          error:
+            "Missing required fields: token, signature, ciphertexts, proofs",
+        },
+        { status: 400 },
       );
     }
 
@@ -44,37 +58,59 @@ export async function POST(
     const signatureBigInt = BigInt(signature);
     const rsaPublicKey = { n: election.rsaPubN, e: election.rsaPubE };
 
-    const sigValid = verifySignature(tokenBigInt, signatureBigInt, rsaPublicKey);
+    const sigValid = verifySignature(
+      tokenBigInt,
+      signatureBigInt,
+      rsaPublicKey,
+    );
     if (!sigValid) {
-      return NextResponse.json({ error: "Invalid blind signature" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid blind signature" },
+        { status: 400 },
+      );
     }
 
     const alreadyUsed = await isTokenUsedInElection(token, id);
     if (alreadyUsed) {
-      return NextResponse.json({ error: "Token already used" }, { status: 409 });
+      return NextResponse.json(
+        { error: "Token already used" },
+        { status: 409 },
+      );
     }
 
-    const paillierPublicKey = { n: election.paillierPubN, g: election.paillierPubG };
-    
+    const paillierPublicKey = {
+      n: election.paillierPubN,
+      g: election.paillierPubG,
+    };
+
     // Deserialize ciphertexts and proofs
-    const ciphertextsBigInt = ciphertexts.map(c => BigInt(c));
-    
+    const ciphertextsBigInt = ciphertexts.map((c) => BigInt(c));
+
     let ballotProof;
     try {
       // Import dynamically to avoid top-level require if needed, but standard import is fine
-      const { deserializeBallotProof } = require("@/lib/crypto/proof-serialization");
+      const {
+        deserializeBallotProof,
+      } = require("@/lib/crypto/proof-serialization");
       ballotProof = deserializeBallotProof(proofs as any);
     } catch (e) {
-      return NextResponse.json({ error: "Invalid proof format" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid proof format" },
+        { status: 400 },
+      );
     }
 
     const { verifyBallot } = require("@/lib/crypto/zkp");
-    const isBallotValid = await verifyBallot(ciphertextsBigInt, ballotProof, paillierPublicKey);
-    
+    const isBallotValid = await verifyBallot(
+      ciphertextsBigInt,
+      ballotProof,
+      paillierPublicKey,
+    );
+
     if (!isBallotValid) {
       return NextResponse.json(
         { error: "Zero-Knowledge Proof verification failed. Ballot rejected." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
