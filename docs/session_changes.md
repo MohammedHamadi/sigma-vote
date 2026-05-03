@@ -305,3 +305,39 @@ The results page displayed a beautiful CSS-based table but lacked an interactive
 | `features/admin/components/VotersManagementPanel.tsx` | **New**  | Role promotion/demotion table                                                                                    |
 | `features/results/components/ResultsChart.tsx`        | Modified | Recharts bar chart integration; tooltip TypeScript fix                                                           |
 | `package.json`                                        | Modified | Added `recharts` dependency                                                                                      |
+
+---
+
+## 11. Voter Restriction Enforcement (New)
+
+### Problem
+
+Elections with selected voters were not actually enforced. Any logged-in user could see and vote in any election regardless of voter restrictions.
+
+### Fix
+
+Implemented permission checks at multiple layers:
+
+1. **`features/voting/actions.ts` (`requestBlindSignature`)**:
+   - Added check: before issuing a blind signature, verifies the requesting voter is in the election's `allowedVoterIds` list (if the election has restricted voters).
+   - Rejects with "You are not authorized to vote in this election".
+
+2. **`features/elections/actions.ts` (`getElections`)**:
+   - For regular voters, filters out elections they are not allowed to vote in.
+   - Admins can still see all elections.
+
+3. **`features/elections/actions.ts` (`getElectionById`)**:
+   - Returns `permissions` object: `canView`, `canVote`, `isRestricted`, `isAllowed`.
+   - `canView` is `true` for admins or allowed voters.
+   - `canVote` is `true` only for voters in the allowed list.
+
+4. **`app/(main)/elections/[electionId]/page.tsx`**:
+   - Shows **Access Denied** page for voters not in the allowed list.
+   - Shows **Admin View Only** message for admins who can view but cannot vote (not in voter list).
+   - Shows normal voting UI only for allowed voters.
+
+| File                                         | Change                                                              |
+| -------------------------------------------- | ------------------------------------------------------------------- |
+| `features/voting/actions.ts`                 | Added voter allowed check in `requestBlindSignature`                |
+| `features/elections/actions.ts`              | Added filtering in `getElections`; permissions in `getElectionById` |
+| `app/(main)/elections/[electionId]/page.tsx` | Access denied / admin view only / can vote logic                    |

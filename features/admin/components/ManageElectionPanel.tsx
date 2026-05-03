@@ -27,14 +27,29 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ArrowUp, ArrowDown, Edit, Trash2, X, Check } from "lucide-react";
+import {
+  ArrowUp,
+  ArrowDown,
+  Edit,
+  Trash2,
+  X,
+  Check,
+  Users,
+} from "lucide-react";
 
 export function ManageElectionPanel({
   election,
   candidates,
+  allowedVoters,
 }: {
   election: Election;
   candidates: Candidate[];
+  allowedVoters?: {
+    id: number;
+    name: string;
+    email: string;
+    role: string | null;
+  }[];
 }) {
   const router = useRouter();
   const [isUpdating, setIsUpdating] = useState(false);
@@ -358,6 +373,43 @@ export function ManageElectionPanel({
               />
               <Button type="submit">Add</Button>
             </form>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Allowed Voters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Allowed Voters ({allowedVoters?.length ?? 0})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {allowedVoters && allowedVoters.length > 0 ? (
+            <div className="max-h-60 overflow-y-auto divide-y rounded-md border">
+              {allowedVoters.map((voter) => (
+                <div
+                  key={voter.id}
+                  className="flex items-center justify-between p-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{voter.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {voter.email}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {voter.role}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No specific voters assigned. All registered voters will be allowed
+              to participate.
+            </p>
           )}
         </CardContent>
       </Card>

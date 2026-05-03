@@ -22,6 +22,13 @@
       "when": 1775011017267,
       "tag": "0002_petite_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777832901191,
+      "tag": "0003_exotic_kingpin",
+      "breakpoints": true
     }
   ]
 }

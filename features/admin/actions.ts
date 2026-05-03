@@ -28,7 +28,13 @@ import { generateRSAKeyPair } from "@/lib/crypto/blind-signature";
 import { splitSecret, reconstructSecret } from "@/lib/crypto/shamir";
 import { modPow, modInverse } from "@/lib/crypto/bigint-utils";
 import { jsonParse } from "@/lib/db-utils";
-import { updateVoter } from "@/db-actions/voters";
+import {
+  updateVoter,
+  getAllVoters,
+  searchVoters,
+  getVotersWithPagination,
+} from "@/db-actions/voters";
+import { bulkAddElectionVoters } from "@/db-actions/electionVoters";
 
 export async function createElection(data: {
   title: string;
@@ -38,6 +44,7 @@ export async function createElection(data: {
   startTime?: string;
   endTime?: string;
   adminIds: number[];
+  voterIds?: number[];
 }) {
   if (data.threshold > data.totalShares) {
     throw new Error("Threshold cannot exceed total shares");
@@ -76,6 +83,15 @@ export async function createElection(data: {
       shareY: shares[i].y.toString(),
     });
     storedShares.push({ ...share, shareValue: shares[i].y.toString() });
+  }
+
+  // Store allowed voters if specified
+  if (data.voterIds && data.voterIds.length > 0) {
+    const electionVoterData = data.voterIds.map((voterId) => ({
+      electionId: election.id,
+      voterId,
+    }));
+    await bulkAddElectionVoters(electionVoterData);
   }
 
   return {
@@ -237,6 +253,25 @@ export async function updateVoterRole(voterId: string, role: string) {
     throw new Error("Invalid role. Must be 'voter' or 'admin'");
   }
   return updateVoter(id, { role });
+}
+
+export async function searchVotersAction(query: string, limit: number = 50) {
+  if (!query || query.trim().length === 0) {
+    return [];
+  }
+  return searchVoters(query.trim(), limit);
+}
+
+export async function getVotersPageAction(
+  page: number = 1,
+  pageSize: number = 50,
+  search?: string,
+) {
+  return getVotersWithPagination(page, pageSize, search);
+}
+
+export async function getAllVotersAction() {
+  return getAllVoters();
 }
 
 export async function deleteElectionAction(electionId: string) {

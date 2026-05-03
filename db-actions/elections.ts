@@ -6,6 +6,7 @@ import {
   ballots,
   usedTokens,
   blindSigLog,
+  electionVoters,
   type Election,
   type NewElection,
 } from "@/db/schema";
@@ -159,6 +160,7 @@ export async function deleteElection(id: number): Promise<void> {
     await db.delete(blindSigLog).where(eq(blindSigLog.electionId, id));
     await db.delete(ballots).where(eq(ballots.electionId, id));
     await db.delete(keyShares).where(eq(keyShares.electionId, id));
+    await db.delete(electionVoters).where(eq(electionVoters.electionId, id));
     await db.delete(candidates).where(eq(candidates.electionId, id));
 
     // Finally delete the election

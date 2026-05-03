@@ -1,8 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { createElection, addCandidate } from "@/features/admin/actions";
+import {
+  createElection,
+  addCandidate,
+  searchVotersAction,
+  getAllVotersAction,
+} from "@/features/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Search, Check, X, Users } from "lucide-react";
 
 type IssuedShare = {
   adminId: number;
@@ -39,6 +45,61 @@ export function CreateElectionForm({ admins }: { admins: Voter[] }) {
   const [selectedAdminIds, setSelectedAdminIds] = useState<number[]>(
     admins.slice(0, 3).map((a) => a.id),
   );
+
+  // ─── Voter Selection State ───
+  const [voterSearch, setVoterSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<Voter[]>([]);
+  const [selectedVoterIds, setSelectedVoterIds] = useState<number[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const debouncedSearch = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const results = await searchVotersAction(query, 20);
+      setSearchResults(results);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => debouncedSearch(voterSearch), 300);
+    return () => clearTimeout(timer);
+  }, [voterSearch, debouncedSearch]);
+
+  const toggleVoter = (voterId: number) => {
+    setSelectedVoterIds((prev) =>
+      prev.includes(voterId)
+        ? prev.filter((id) => id !== voterId)
+        : [...prev, voterId],
+    );
+  };
+
+  const selectAllSearchResults = () => {
+    const newIds = searchResults
+      .map((v) => v.id)
+      .filter((id) => !selectedVoterIds.includes(id));
+    setSelectedVoterIds((prev) => [...prev, ...newIds]);
+  };
+
+  const selectAllUsers = async () => {
+    const allVoters = await getAllVotersAction();
+    const allIds = allVoters.map((v) => v.id);
+    setSelectedVoterIds((prev) => {
+      const newIds = allIds.filter((id) => !prev.includes(id));
+      return [...prev, ...newIds];
+    });
+  };
+
+  const deselectVoter = (voterId: number) => {
+    setSelectedVoterIds((prev) => prev.filter((id) => id !== voterId));
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -68,6 +129,7 @@ export function CreateElectionForm({ admins }: { admins: Voter[] }) {
         startTime: startTime || undefined,
         endTime: endTime || undefined,
         adminIds: selectedIds,
+        voterIds: selectedVoterIds.length > 0 ? selectedVoterIds : undefined,
       });
 
       const validCandidates = candidates.filter((c) => c.name.trim());
@@ -317,6 +379,147 @@ export function CreateElectionForm({ admins }: { admins: Voter[] }) {
               <Label htmlFor="endTime">End Time</Label>
               <Input id="endTime" name="endTime" type="datetime-local" />
             </div>
+          </div>
+
+          {/* ─── Voter Selection ─── */}
+          <div className="space-y-3 rounded-lg border p-4">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Allowed Voters
+                {selectedVoterIds.length > 0 && (
+                  <Badge variant="secondary">
+                    {selectedVoterIds.length} selected
+                  </Badge>
+                )}
+              </Label>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search voters by name or email..."
+                value={voterSearch}
+                onChange={(e) => setVoterSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={selectAllUsers}
+              >
+                Select All Users
+              </Button>
+              {selectedVoterIds.length > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedVoterIds([])}
+                >
+                  Clear All
+                </Button>
+              )}
+            </div>
+
+            {/* Search Results */}
+            {isSearching && (
+              <p className="text-sm text-muted-foreground">Searching...</p>
+            )}
+
+            {searchResults.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    {searchResults.length} result(s)
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={selectAllSearchResults}
+                  >
+                    Select All Results
+                  </Button>
+                </div>
+                <div className="max-h-48 overflow-y-auto rounded-md border divide-y">
+                  {searchResults.map((voter) => {
+                    const isSelected = selectedVoterIds.includes(voter.id);
+                    return (
+                      <div
+                        key={voter.id}
+                        className={`flex items-center justify-between p-2 cursor-pointer transition-colors ${
+                          isSelected ? "bg-primary/5" : "hover:bg-muted"
+                        }`}
+                        onClick={() => toggleVoter(voter.id)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`flex h-5 w-5 items-center justify-center rounded border ${
+                              isSelected
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-muted-foreground/30"
+                            }`}
+                          >
+                            {isSelected && <Check className="h-3.5 w-3.5" />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{voter.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {voter.email}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {voter.role}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {voterSearch && !isSearching && searchResults.length === 0 && (
+              <p className="text-sm text-muted-foreground">No voters found</p>
+            )}
+
+            {/* Selected Voters Summary */}
+            {selectedVoterIds.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm">Selected Voters:</Label>
+                <div className="flex flex-wrap gap-2">
+                  {selectedVoterIds.map((voterId) => {
+                    const voter = searchResults.find((v) => v.id === voterId);
+                    return (
+                      <Badge
+                        key={voterId}
+                        variant="secondary"
+                        className="flex items-center gap-1 pr-1"
+                      >
+                        {voter ? voter.name : `Voter #${voterId}`}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deselectVoter(voterId);
+                          }}
+                          className="ml-1 rounded-full p-0.5 hover:bg-destructive/20"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

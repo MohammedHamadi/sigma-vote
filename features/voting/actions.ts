@@ -5,6 +5,10 @@ import { getElectionById as dbGetElectionById } from "@/db-actions/elections";
 import { hasVoterReceivedSig, logBlindSig } from "@/db-actions/blindSigLog";
 import { signBlinded } from "@/lib/crypto/blind-signature";
 import { validateElectionWindow } from "@/lib/db-utils";
+import {
+  isVoterAllowed,
+  getElectionVoterIdsByElection,
+} from "@/db-actions/electionVoters";
 
 export async function requestBlindSignature(
   electionId: string,
@@ -30,6 +34,13 @@ export async function requestBlindSignature(
   }
 
   const voterId = parseInt(session.user.id, 10);
+
+  // Check if voter is in allowed list (if election has restricted voters)
+  const allowedVoterIds = await getElectionVoterIdsByElection(id);
+  if (allowedVoterIds.length > 0 && !allowedVoterIds.includes(voterId)) {
+    throw new Error("You are not authorized to vote in this election");
+  }
+
   const alreadySigned = await hasVoterReceivedSig(id, voterId);
   if (alreadySigned) {
     throw new Error(

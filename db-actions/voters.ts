@@ -1,8 +1,10 @@
 import { db } from "@/db";
 import { voters, type Voter, type NewVoter } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, ilike, or, sql } from "drizzle-orm";
 
-export async function createVoter(data: Omit<NewVoter, "id" | "createdAt">): Promise<Voter> {
+export async function createVoter(
+  data: Omit<NewVoter, "id" | "createdAt">,
+): Promise<Voter> {
   try {
     const [result] = await db.insert(voters).values(data).returning();
     if (!result) throw new Error("Failed to create voter");
@@ -13,9 +15,15 @@ export async function createVoter(data: Omit<NewVoter, "id" | "createdAt">): Pro
   }
 }
 
-export async function getVoterByEmail(email: string): Promise<Voter | undefined> {
+export async function getVoterByEmail(
+  email: string,
+): Promise<Voter | undefined> {
   try {
-    const [result] = await db.select().from(voters).where(eq(voters.email, email)).limit(1);
+    const [result] = await db
+      .select()
+      .from(voters)
+      .where(eq(voters.email, email))
+      .limit(1);
     return result;
   } catch (err) {
     console.error(`[db-actions] Error getting voter by email ${email}:`, err);
@@ -25,7 +33,11 @@ export async function getVoterByEmail(email: string): Promise<Voter | undefined>
 
 export async function getVoterById(id: number): Promise<Voter | undefined> {
   try {
-    const [result] = await db.select().from(voters).where(eq(voters.id, id)).limit(1);
+    const [result] = await db
+      .select()
+      .from(voters)
+      .where(eq(voters.id, id))
+      .limit(1);
     return result;
   } catch (err) {
     console.error(`[db-actions] Error getting voter by id ${id}:`, err);
@@ -42,9 +54,15 @@ export async function getVotersByRole(role: string): Promise<Voter[]> {
   }
 }
 
-export async function updateVoterPassword(id: number, newPasswordHash: string): Promise<void> {
+export async function updateVoterPassword(
+  id: number,
+  newPasswordHash: string,
+): Promise<void> {
   try {
-    const result = await db.update(voters).set({ passwordHash: newPasswordHash }).where(eq(voters.id, id));
+    const result = await db
+      .update(voters)
+      .set({ passwordHash: newPasswordHash })
+      .where(eq(voters.id, id));
     if (result.rowCount === 0) throw new Error(`Voter with id ${id} not found`);
   } catch (err) {
     console.error(`[db-actions] Error updating password for voter ${id}:`, err);
@@ -61,7 +79,10 @@ export async function getAllVoters(): Promise<Voter[]> {
   }
 }
 
-export async function updateVoter(id: number, data: Partial<NewVoter>): Promise<Voter> {
+export async function updateVoter(
+  id: number,
+  data: Partial<NewVoter>,
+): Promise<Voter> {
   try {
     const [result] = await db
       .update(voters)
@@ -81,6 +102,57 @@ export async function deleteVoter(id: number): Promise<void> {
     await db.delete(voters).where(eq(voters.id, id));
   } catch (err) {
     console.error(`[db-actions] Error deleting voter ${id}:`, err);
+    throw err;
+  }
+}
+
+export async function searchVoters(
+  query: string,
+  limit: number = 50,
+): Promise<Voter[]> {
+  try {
+    const searchTerm = `%${query}%`;
+    return await db
+      .select()
+      .from(voters)
+      .where(
+        or(ilike(voters.name, searchTerm), ilike(voters.email, searchTerm)),
+      )
+      .limit(limit);
+  } catch (err) {
+    console.error(
+      `[db-actions] Error searching voters with query "${query}":`,
+      err,
+    );
+    throw err;
+  }
+}
+
+export async function getVotersWithPagination(
+  page: number = 1,
+  pageSize: number = 50,
+  search?: string,
+): Promise<{ voters: Voter[]; total: number }> {
+  try {
+    const offset = (page - 1) * pageSize;
+    let baseQuery = db.select().from(voters);
+
+    if (search) {
+      const searchTerm = `%${search}%`;
+      baseQuery = baseQuery.where(
+        or(ilike(voters.name, searchTerm), ilike(voters.email, searchTerm)),
+      ) as typeof baseQuery;
+    }
+
+    const allVoters = await baseQuery;
+    const paginatedVoters = allVoters.slice(offset, offset + pageSize);
+
+    return {
+      voters: paginatedVoters,
+      total: allVoters.length,
+    };
+  } catch (err) {
+    console.error(`[db-actions] Error getting voters with pagination:`, err);
     throw err;
   }
 }

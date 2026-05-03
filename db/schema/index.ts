@@ -8,6 +8,7 @@ export { ballots } from "./ballots";
 export { usedTokens } from "./usedTokens";
 export { keyShares } from "./keyShares";
 export { blindSigLog } from "./blindSigLog";
+export { electionVoters } from "./electionVoters";
 
 // ─── Import tables for type inference ───
 import { voters } from "./voters";
@@ -17,6 +18,7 @@ import { ballots } from "./ballots";
 import { usedTokens } from "./usedTokens";
 import { keyShares } from "./keyShares";
 import { blindSigLog } from "./blindSigLog";
+import { electionVoters } from "./electionVoters";
 
 // ─── Select types (returned from queries) ───
 export type Voter = InferSelectModel<typeof voters>;
@@ -26,6 +28,7 @@ export type Ballot = InferSelectModel<typeof ballots>;
 export type UsedToken = InferSelectModel<typeof usedTokens>;
 export type KeyShare = InferSelectModel<typeof keyShares>;
 export type BlindSigLogEntry = InferSelectModel<typeof blindSigLog>;
+export type ElectionVoter = InferSelectModel<typeof electionVoters>;
 
 // ─── Insert types (used when creating records) ───
 export type NewVoter = InferInsertModel<typeof voters>;
@@ -35,3 +38,4 @@ export type NewBallot = InferInsertModel<typeof ballots>;
 export type NewUsedToken = InferInsertModel<typeof usedTokens>;
 export type NewKeyShare = InferInsertModel<typeof keyShares>;
 export type NewBlindSigLogEntry = InferInsertModel<typeof blindSigLog>;
+export type NewElectionVoter = InferInsertModel<typeof electionVoters>;
