@@ -341,3 +341,61 @@ Implemented permission checks at multiple layers:
 | `features/voting/actions.ts`                 | Added voter allowed check in `requestBlindSignature`                |
 | `features/elections/actions.ts`              | Added filtering in `getElections`; permissions in `getElectionById` |
 | `app/(main)/elections/[electionId]/page.tsx` | Access denied / admin view only / can vote logic                    |
+
+---
+
+## 12. Secure Key Share Management (New)
+
+### Problem
+
+Secret shares were stored in plaintext in the `keyShares` table (`share_y` column), exposing them to anyone with database access. Additionally, the election creator could see all shares in the UI after creating an election, compromising the threshold security model.
+
+### Fix
+
+Implemented cryptographic commitments and email-based distribution:
+
+1. **`lib/email.ts` (New)**:
+   - Nodemailer transport configured for Gmail SMTP (`GMAIL_USER`, `GMAIL_APP_PASSWORD`).
+   - `sendShareEmail()` sends each admin their secret `shareX` and `shareY` via email.
+
+2. **`db/schema/keyShares.ts`**:
+   - Replaced `shareY` column with `shareCommitment` (SHA-256 hash of share).
+   - Added `submittedValue` column to store the verified share after admin submission.
+   - Fixed missing `timestamp` import.
+
+3. **`db-actions/keyShares.ts`**:
+   - Updated `markShareSubmitted(id, shareValue)` to accept and persist the verified share value.
+
+4. **`features/admin/actions.ts` (`createElection`)**:
+   - After generating shares with Shamir's Secret Sharing, computes SHA-256 commitment for each `shareY`.
+   - Stores only `shareX` + `shareCommitment` in the database.
+   - Emails the actual `shareY` to each admin using `sendShareEmail()`.
+   - Returns only `{ election }` (no longer exposes shares to the creator).
+
+5. **`features/admin/actions.ts` (`submitKeyShare`)**:
+   - Now accepts `shareValue` from the admin.
+   - Verifies the submitted value by recomputing its SHA-256 hash and comparing it to the stored `shareCommitment`.
+   - Only marks the share as submitted and stores the value if verification passes.
+
+6. **`features/admin/actions.ts` (`tally`)**:
+   - Reconstructs the secret using `submittedValue` instead of the removed `shareY`.
+
+7. **`features/admin/components/CreateElectionForm.tsx`**:
+   - Removed the "Key Ceremony Output" table that displayed all shares to the election creator.
+   - Replaced with a success message confirming shares were emailed to admins.
+
+8. **`features/admin/components/KeyShareInput.tsx`**:
+   - Already had a share input field; updated call to pass `shareValue` to `submitKeyShare()`.
+
+9. **`drizzle/0004_secure_shares.sql`** (New):
+   - Migration to add `share_commitment` and `submitted_value` columns, and drop `share_y`.
+
+| File                                               | Change                                                                                                                               |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `lib/email.ts`                                     | **New** — Nodemailer Gmail SMTP service for sending secret shares                                                                    |
+| `db/schema/keyShares.ts`                           | Replaced `shareY` with `shareCommitment`; added `submittedValue`; fixed `timestamp` import                                           |
+| `db-actions/keyShares.ts`                          | `markShareSubmitted` now accepts and stores `shareValue`                                                                             |
+| `features/admin/actions.ts`                        | `createElection` hashes shares, emails them, stores commitments; `submitKeyShare` verifies commitment; `tally` uses `submittedValue` |
+| `features/admin/components/CreateElectionForm.tsx` | Removed Key Ceremony Output table; simplified success message                                                                        |
+| `drizzle/0004_secure_shares.sql`                   | **New** — Migration for secure shares schema                                                                                         |
+| `drizzle/meta/_journal.json`                       | Added entry for migration `0004_secure_shares`                                                                                       |

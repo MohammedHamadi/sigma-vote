@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "crypto";
 import {
   createElection as dbCreateElection,
   getElectionById as dbGetElectionById,
@@ -33,8 +34,10 @@ import {
   getAllVoters,
   searchVoters,
   getVotersWithPagination,
+  getVoterById,
 } from "@/db-actions/voters";
 import { bulkAddElectionVoters } from "@/db-actions/electionVoters";
+import { sendShareEmail } from "@/lib/email";
 
 export async function createElection(data: {
   title: string;
@@ -74,15 +77,35 @@ export async function createElection(data: {
   const lambdaSecret = BigInt(paillierKeypair.privateKey.lambda);
   const shares = splitSecret(lambdaSecret, data.totalShares, data.threshold);
 
-  const storedShares = [];
   for (let i = 0; i < data.adminIds.length; i++) {
-    const share = await storeKeyShare({
+    const shareX = parseInt(shares[i].x.toString(), 10);
+    const shareY = shares[i].y.toString();
+    const commitment = createHash("sha256").update(shareY).digest("hex");
+
+    await storeKeyShare({
       electionId: election.id,
       adminId: data.adminIds[i],
-      shareX: shares[i].x.toString(),
-      shareY: shares[i].y.toString(),
+      shareX: shareX as number,
+      shareCommitment: commitment,
     });
-    storedShares.push({ ...share, shareValue: shares[i].y.toString() });
+
+    // Send share via email to the admin
+    const admin = await getVoterById(data.adminIds[i]);
+    if (admin?.email && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      try {
+        await sendShareEmail(
+          admin.email,
+          data.title,
+          parseInt(shares[i].x.toString(), 10),
+          shareY,
+        );
+      } catch (err) {
+        console.error(
+          `Failed to send share email to admin ${data.adminIds[i]}:`,
+          err,
+        );
+      }
+    }
   }
 
   // Store allowed voters if specified
@@ -94,10 +117,7 @@ export async function createElection(data: {
     await bulkAddElectionVoters(electionVoterData);
   }
 
-  return {
-    election,
-    shares: storedShares,
-  };
+  return { election };
 }
 
 export async function openElection(electionId: string) {
@@ -214,10 +234,17 @@ export async function reorderCandidates(
   return Promise.all(updates);
 }
 
-export async function submitKeyShare(electionId: string, adminId: string) {
+export async function submitKeyShare(
+  electionId: string,
+  adminId: string,
+  shareValue: string,
+) {
   const eId = parseInt(electionId, 10);
   const aId = parseInt(adminId, 10);
   if (isNaN(eId) || isNaN(aId)) throw new Error("Invalid IDs");
+  if (!shareValue || shareValue.trim().length === 0) {
+    throw new Error("Share value is required");
+  }
 
   const election = await dbGetElectionById(eId);
   if (!election) throw new Error("Election not found");
@@ -233,7 +260,20 @@ export async function submitKeyShare(electionId: string, adminId: string) {
     throw new Error("No key share assigned to this admin for this election");
   }
 
-  const updated = await markShareSubmitted(adminShares[0].id);
+  // Verify the submitted share against the stored commitment
+  const commitment = createHash("sha256")
+    .update(shareValue.trim())
+    .digest("hex");
+  if (commitment !== adminShares[0].shareCommitment) {
+    throw new Error(
+      "Invalid share value: does not match the stored commitment",
+    );
+  }
+
+  const updated = await markShareSubmitted(
+    adminShares[0].id,
+    shareValue.trim(),
+  );
 
   const newCount = submitted.length + 1;
   const thresholdMet = newCount >= election.threshold;
@@ -303,7 +343,8 @@ export async function tally(electionId: string) {
 
   const sharesForReconstruction = submittedShares
     .slice(0, election.threshold)
-    .map((s) => ({ x: BigInt(s.shareX), y: BigInt(s.shareY) }));
+    .filter((s) => s.submittedValue != null)
+    .map((s) => ({ x: BigInt(s.shareX), y: BigInt(s.submittedValue!) }));
 
   const reconstructedLambda = reconstructSecret(sharesForReconstruction);
 

@@ -38,7 +38,6 @@ export function CreateElectionForm({ admins }: { admins: Voter[] }) {
   >([{ name: "", party: "" }]);
   const [issued, setIssued] = useState<{
     electionId: number;
-    shares: IssuedShare[];
   } | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
   const [totalShares, setTotalShares] = useState(3);
@@ -143,13 +142,6 @@ export function CreateElectionForm({ admins }: { admins: Voter[] }) {
 
       setIssued({
         electionId: result.election.id,
-        shares: result.shares.map(
-          (s: { adminId: number; shareX: string; shareY: string }) => ({
-            adminId: s.adminId,
-            shareX: s.shareX,
-            shareY: s.shareY,
-          }),
-        ),
       });
     } catch (err) {
       setError(
@@ -175,82 +167,36 @@ export function CreateElectionForm({ admins }: { admins: Voter[] }) {
   };
 
   if (issued) {
-    const sharesJson = JSON.stringify(issued, null, 2);
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Key Ceremony Output</CardTitle>
+          <CardTitle>Election Created Successfully</CardTitle>
           <CardDescription>
-            Record each admin&apos;s share now. Shares are also stored in the
-            database, but you should distribute them out-of-band so the
-            threshold ceremony is not trivially server-side.
+            The election has been created and secret shares have been emailed to
+            each selected admin. You do not have access to other admins&apos;
+            shares.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="overflow-hidden rounded-lg border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40">
-                <tr>
-                  <th className="px-3 py-2 text-left font-medium">Admin ID</th>
-                  <th className="px-3 py-2 text-left font-medium">Share x</th>
-                  <th className="px-3 py-2 text-left font-medium">
-                    Share y (truncated)
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {issued.shares.map((s) => (
-                  <tr key={s.adminId} className="border-t">
-                    <td className="px-3 py-2 font-mono">{s.adminId}</td>
-                    <td className="px-3 py-2 font-mono">{s.shareX}</td>
-                    <td className="px-3 py-2 font-mono opacity-80">
-                      {s.shareY.slice(0, 24)}…{s.shareY.slice(-8)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <details>
-            <summary className="cursor-pointer text-sm font-medium">
-              Show full JSON (copy & store securely)
-            </summary>
-            <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-muted/40 p-3 text-xs">
-              {sharesJson}
-            </pre>
-          </details>
-
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={acknowledged}
-              onChange={(e) => setAcknowledged(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>
-              I have recorded all shares and understand the server still has
-              copies for this prototype. In production, shares would be
-              encrypted to each admin and erased server-side.
-            </span>
-          </label>
-
-          <div className="flex gap-2">
+          <p className="text-sm text-muted-foreground">
+            Election ID: <span className="font-mono">{issued.electionId}</span>
+          </p>
+          <div className="flex gap-3">
             <Button
               onClick={() =>
                 router.push(`/admin/elections/${issued.electionId}`)
               }
-              disabled={!acknowledged}
             >
-              Continue to Manage Election
+              Complete Setup & Open Election
             </Button>
             <Button
               variant="outline"
               onClick={() => {
-                navigator.clipboard.writeText(sharesJson);
+                setIssued(null);
+                setCandidates([{ name: "", party: "" }]);
               }}
             >
-              Copy JSON
+              Create Another Election
             </Button>
           </div>
         </CardContent>

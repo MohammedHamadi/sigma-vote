@@ -29,6 +29,13 @@
       "when": 1777832901191,
       "tag": "0003_exotic_kingpin",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777990000000,
+      "tag": "0004_secure_shares",
+      "breakpoints": true
     }
   ]
 }
