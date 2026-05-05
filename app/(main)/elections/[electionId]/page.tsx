@@ -105,50 +105,35 @@ export default async function ElectionDetailPage({
                 Voting Access
               </h2>
 
-              {canVote ? (
-                <>
-                  <GenerateCredentials
-                    electionId={election.id}
-                    rsaPubE={election.rsaPubE || ""}
-                    rsaPubN={election.rsaPubN || ""}
-                  />
-
-                  <div className="bg-[#121212] border border-[#262626] p-8 rounded-xl relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div className="relative z-10">
-                      <h3 className="font-bold text-lg text-white mb-2 leading-tight">
-                        Ready to Cast Your Vote?
-                      </h3>
-                      <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-                        If you have already generated and saved your anonymous
-                        credentials, proceed to the secure voting booth.
-                      </p>
-                      <Link href={`/elections/${election.id}/vote`}>
-                        <Button
-                          variant="secondary"
-                          className="w-full bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold py-6"
-                        >
-                          Enter Voting Booth{" "}
-                          <ArrowRight className="ml-2 w-5 h-5" />
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="bg-[#121212] border border-amber-500/30 p-8 rounded-xl">
-                  <div className="relative z-10">
-                    <h3 className="font-bold text-lg text-white mb-2 leading-tight flex items-center gap-2">
-                      <Lock className="w-5 h-5 text-amber-500" />
-                      Admin View Only
-                    </h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">
-                      As an administrator, you can view this election but you
-                      are not on the voter list and cannot vote in it.
-                    </p>
-                  </div>
-                </div>
+              {canVote && (
+                <GenerateCredentials
+                  electionId={election.id}
+                  rsaPubE={election.rsaPubE || ""}
+                  rsaPubN={election.rsaPubN || ""}
+                />
               )}
+
+              <div className="bg-[#121212] border border-[#262626] p-8 rounded-xl relative overflow-hidden group">
+                <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative z-10">
+                  <h3 className="font-bold text-lg text-white mb-2 leading-tight">
+                    Ready to Cast Your Vote?
+                  </h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+                    If you have already generated and saved your anonymous
+                    credentials, proceed to the secure voting booth.
+                  </p>
+                  <Link href={`/elections/${election.id}/vote`}>
+                    <Button
+                      variant="secondary"
+                      className="w-full bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold py-6"
+                    >
+                      Enter Voting Booth{" "}
+                      <ArrowRight className="ml-2 w-5 h-5" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
             </div>
           )}
 

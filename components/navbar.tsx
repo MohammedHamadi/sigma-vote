@@ -20,7 +20,7 @@ export async function Navbar() {
         <nav className="hidden md:flex space-x-8">
           <Link
             href="/elections"
-            className="text-primary font-bold border-b-2 border-primary pb-1 font-serif text-sm antialiased"
+            className="text-zinc-400 font-medium hover:text-white transition-colors hover:bg-white/5 rounded-lg px-3 py-2 font-serif text-sm antialiased active:scale-95 duration-200"
           >
             Active Elections
           </Link>
@@ -30,12 +30,14 @@ export async function Navbar() {
           >
             Docs
           </Link>
-          <Link
-            href="/elections"
-            className="text-zinc-400 font-medium hover:text-white transition-colors hover:bg-white/5 rounded-lg px-3 py-2 font-serif text-sm antialiased active:scale-95 duration-200"
-          >
-            Results
-          </Link>
+          {session?.user?.role === "admin" && (
+            <Link
+              href="/admin"
+              className="text-zinc-400 font-medium hover:text-white transition-colors hover:bg-white/5 rounded-lg px-3 py-2 font-serif text-sm antialiased active:scale-95 duration-200"
+            >
+              Admin
+            </Link>
+          )}
         </nav>
 
         <div className="flex items-center space-x-4">

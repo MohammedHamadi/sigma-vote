@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 export function ElectionCard({ election }: { election: Election }) {
   const isOpen = election.status === "OPEN";
   const isSetup = election.status === "SETUP";
-  const isClosed = election.status === "CLOSED";
+  const isClosed = election.status === "CLOSED" || election.status === "TALLIED";
+  const isTallied = election.status === "TALLIED" || !!election.results;
 
   return (
     <div className="bg-[#121212] border border-[#262626] rounded-xl p-8 hover:border-primary/50 hover:bg-[#151515] transition-all flex flex-col h-full group relative overflow-hidden">
@@ -48,14 +49,22 @@ export function ElectionCard({ election }: { election: Election }) {
       <div className="flex flex-col gap-3 relative z-10">
         {isOpen && (
           <Link href={`/elections/${election.id}/vote`} className="w-full">
-            <Button className="w-full bg-[#1D84DD] hover:bg-[#1D84DD]/90 text-white font-bold py-6 shadow-[0_0_20px_rgba(29,132,221,0.2)]">
+            <Button className="w-full cursor-pointer bg-[#1D84DD] hover:bg-[#1D84DD]/90 text-white font-bold py-6 shadow-[0_0_20px_rgba(29,132,221,0.2)]">
               Vote Now
             </Button>
           </Link>
         )}
 
+        {isTallied && (
+          <Link href={`/elections/${election.id}/results`} className="w-full">
+            <Button className="w-full cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-6 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+              View Results
+            </Button>
+          </Link>
+        )}
+
         <Link href={`/elections/${election.id}`} className="w-full">
-          <Button variant="secondary" className="w-full bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold py-6">
+          <Button variant="secondary" className="w-full cursor-pointer bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold py-6">
             View Details
           </Button>
         </Link>
