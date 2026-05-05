@@ -67,6 +67,27 @@ export async function getElectionVoterIdsByElection(
   }
 }
 
+export async function getElectionVoterMappingsByElections(
+  electionIds: number[],
+): Promise<{ electionId: number; voterId: number }[]> {
+  try {
+    if (electionIds.length === 0) return [];
+    return await db
+      .select({
+        electionId: electionVoters.electionId,
+        voterId: electionVoters.voterId,
+      })
+      .from(electionVoters)
+      .where(inArray(electionVoters.electionId, electionIds));
+  } catch (err) {
+    console.error(
+      `[db-actions] Error getting voter mappings for multiple elections:`,
+      err,
+    );
+    throw err;
+  }
+}
+
 export async function deleteElectionVotersByElection(
   electionId: number,
 ): Promise<void> {
