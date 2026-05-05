@@ -150,10 +150,6 @@ export async function deleteElection(id: number): Promise<void> {
   try {
     const election = await getElectionById(id);
     if (!election) throw new Error(`Election with id ${id} not found`);
-    if (election.status !== "SETUP") {
-      throw new Error("Can only delete elections in SETUP status");
-    }
-
     // Cascade delete related records (order matters due to FK constraints)
     // Delete in reverse order of dependencies
     await db.delete(usedTokens).where(eq(usedTokens.electionId, id));

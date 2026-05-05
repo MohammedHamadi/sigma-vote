@@ -212,44 +212,42 @@ export function ManageElectionPanel({
             >
               Go to Tally
             </Button>
-            {election.status === "SETUP" && (
-              <Dialog
-                open={deleteDialogOpen}
-                onOpenChange={setDeleteDialogOpen}
-              >
-                <DialogTrigger
-                  render={
-                    <Button variant="destructive" disabled={isUpdating}>
-                      Delete Election
-                    </Button>
-                  }
-                />
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Delete Election</DialogTitle>
-                    <DialogDescription>
-                      Are you sure you want to delete "{election.title}"? This
-                      action cannot be undone.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setDeleteDialogOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={handleDeleteElection}
-                      disabled={isUpdating}
-                    >
-                      {isUpdating ? "Deleting..." : "Delete"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
+            <Dialog
+              open={deleteDialogOpen}
+              onOpenChange={setDeleteDialogOpen}
+            >
+              <DialogTrigger
+                render={
+                  <Button variant="destructive" disabled={isUpdating}>
+                    Delete Election
+                  </Button>
+                }
+              />
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete Election</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete "{election.title}"? This
+                    action cannot be undone and will permanently delete all votes and tally data.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setDeleteDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteElection}
+                    disabled={isUpdating}
+                  >
+                    {isUpdating ? "Deleting..." : "Delete"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
           {error && <p className="text-sm text-destructive mt-3">{error}</p>}
         </CardContent>
