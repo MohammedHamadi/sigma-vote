@@ -6,40 +6,13 @@ import {
   getElectionById as dbGetElectionById,
 } from "@/db-actions/elections";
 import { getCandidatesByElection } from "@/db-actions/candidates";
-import { getElectionVoterIdsByElection } from "@/db-actions/electionVoters";
+import {
+  getElectionVoterIdsByElection,
+  getElectionVoterMappingsByElections,
+} from "@/db-actions/electionVoters";
 
 export async function getElections() {
-  const allElections = await dbGetElections();
-
-  const session = await auth();
-  const userId = session?.user?.id ? parseInt(session.user.id, 10) : null;
-  const userRole = session?.user?.role;
-
-  // Admins can see all elections
-  if (userRole === "admin") {
-    return allElections;
-  }
-
-  // For regular voters, filter to only show elections they are allowed to vote in
-  // or elections that have no voter restrictions (no voters in election_voters table)
-  const filteredElections: typeof allElections = [];
-
-  for (const election of allElections) {
-    const allowedVoterIds = await getElectionVoterIdsByElection(election.id);
-
-    // If no voters are restricted for this election, show it to everyone
-    if (allowedVoterIds.length === 0) {
-      filteredElections.push(election);
-      continue;
-    }
-
-    // If the user is in the allowed list, show the election
-    if (userId && allowedVoterIds.includes(userId)) {
-      filteredElections.push(election);
-    }
-  }
-
-  return filteredElections;
+  return await dbGetElections();
 }
 
 export async function getElectionById(electionId: string) {
@@ -64,7 +37,7 @@ export async function getElectionById(electionId: string) {
     election,
     candidates,
     permissions: {
-      canView: userRole === "admin" || !isRestricted || isAllowed,
+      canView: true,
       canVote:
         (userRole === "voter" || userRole === "admin") &&
         (!isRestricted || isAllowed),
