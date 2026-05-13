@@ -1,0 +1,157 @@
+---
+title: Attack Threat Model
+description: A formal analysis of the adversarial assumptions, attack surfaces, and cryptographic mitigations in SigmaVote.
+---
+
+import { Shield, AlertTriangle, CheckCircle2, XCircle, Lock, Eye, Database } from 'lucide-react';
+
+# <Shield className="inline-block mr-2 h-7 w-7 text-primary" /> Attack Threat Model
+
+SigmaVote is designed under a **trust-minimizing** philosophy: every security guarantee must be rooted in a mathematical proof, not an administrative promise. This page enumerates the principal adversaries the system is designed to resist, the specific attacks each could attempt, and the cryptographic or architectural controls that mitigate them.
+
+---
+
+## Adversarial Assumptions
+
+Before listing attack vectors, we must be explicit about who we assume is malicious. SigmaVote's threat model is structured around four distinct adversary classes.
+
+| Adversary | Capabilities | Trust Level |
+| --- | --- | --- |
+| **External Attacker** | Can eavesdrop on network traffic; can attempt to submit forged ballots. | Untrusted |
+| **Malicious Voter** | A registered voter who attempts to break anonymity guarantees or gain an unfair advantage (e.g., vote multiple times). | Partially trusted |
+| **Corrupt Administrator** | An admin who has their Shamir share and wishes to decrypt the election early or learn individual votes. | Partially trusted |
+| **Compromised Server** | The application server is fully controlled by an attacker, who can read all stored data and observe all incoming requests. | Untrusted |
+
+---
+
+## <AlertTriangle className="inline-block mr-2 h-6 w-6 text-yellow-500" /> Attack Vectors & Mitigations
+
+### 1. Vote Privacy — Learning How Someone Voted
+
+**Threat:** An adversary (network eavesdropper, compromised server, or database attacker) attempts to discover a voter's choices.
+
+**Attack surface:** Network transit, the `ballots` database table, the `blind_sig_log` table.
+
+**Mitigation chain:**
+
+- **Client-side encryption:** All ballot values are Paillier-encrypted *inside the voter's browser* before leaving the device. The network and server receive only ciphertexts, mathematically indistinguishable from random noise without the private key.
+  $$C_i \equiv g^{m_i} \cdot r_i^N \pmod{N^2}$$
+- **Anonymity decoupling:** The `ballots` table has **no foreign key** to the `voters` table. Even a full database dump cannot link a row in `ballots` to the identity of the voter who submitted it.
+- **Blind signature unlinkability:** The `blind_sig_log` records *who* received a signature, but the signed value is a blinded token. The server computes $S' = (T')^d \bmod n$ without seeing $T$, making it computationally infeasible to link $S'$ back to the eventual ballot submission.
+
+**Residual risk:** An attacker who can observe *both* the identity-based signing endpoint and the anonymous ballot submission endpoint at the same instant, combined with timing correlation, could theoretically link the two — this is a covert-channel attack outside the scope of the cryptographic model. HTTPS and submission timing jitter are recommended mitigations for production.
+
+---
+
+### 2. Double Voting
+
+**Threat:** A voter attempts to submit more than one valid ballot in the same election.
+
+**Attack surface:** The ballot submission endpoint (`api/vote/[electionId]/submit`).
+
+**Mitigation chain:**
+
+- **Nullifier list (`used_tokens`):** When a ballot is accepted, the SHA-256 hash of the anonymous token $H(T)$ is stored. Every subsequent submission checks this table first:
+  ```
+  IF H(T) ∈ used_tokens → reject (HTTP 409)
+  ```
+- **RSA blind signature uniqueness:** The `blind_sig_log` has a unique constraint on `(election_id, voter_id)`. A voter can obtain *at most one* blind signature per election. Since a valid ballot requires a verifiable RSA signature on the token, no additional ballot can be created without a new (unobtainable) signature.
+
+**Residual risk:** A voter could attempt to share their credential $(T, S)$ with a third party who then casts the ballot. This is a social attack; the system cannot prevent token sharing while maintaining anonymity. It is mitigated operationally (e.g., by voters understanding that sharing credentials forfeits their own vote).
+
+---
+
+### 3. Invalid Ballot Injection
+
+**Threat:** A malicious voter submits a crafted ballot that encodes a value outside $\{0, 1\}$ (e.g., $v_i = 100$ to inflate a candidate's tally), or submits a ballot where the sum of votes $\neq 1$.
+
+**Attack surface:** The ballot submission endpoint; the ZKP verification logic.
+
+**Mitigation chain:**
+
+- **Per-candidate Disjunctive OR-Proofs (CDS):** Each ciphertext $C_i$ is accompanied by a non-interactive Chaum-Pedersen proof that $m_i \in \{0, 1\}$:
+  $$z_0^N \equiv c_0 \cdot C^{e_0} \pmod{N^2} \quad \text{and} \quad z_1^N \equiv c_1 \cdot (C/g)^{e_1} \pmod{N^2}$$
+  The server independently verifies both equations for every candidate slot. Any ballot that fails any single check is **rejected entirely**.
+
+- **Sum-equals-one Schnorr Proof:** The ballot must also include a proof that the product of all ciphertexts $C_{agg} = \prod_i C_i$ encrypts exactly 1:
+  $$C_{agg} \equiv g \pmod{N^2}$$
+  This prevents tactics such as voting for zero candidates (abstaining without a proof) or casting a fractional vote across multiple candidates.
+
+- **The Fiat-Shamir heuristic:** Both proofs are made non-interactive using a SHA-256 hash as the challenge function, preventing any chosen-challenge attacks.
+
+---
+
+### 4. Early or Unauthorized Decryption
+
+**Threat:** A single corrupt administrator with access to key material attempts to decrypt individual ballot ciphertexts before the election closes, or reconstructs the private key without the required number of cooperating trustees.
+
+**Attack surface:** The Shamir key share storage (`key_shares` table); the tally server action.
+
+**Mitigation chain:**
+
+- **Threshold Shamir Secret Sharing:** The Paillier private key $\lambda$ is split into $n$ shares using a degree-$(t-1)$ polynomial over a 256-bit prime field. Any set of fewer than $t$ shares is **information-theoretically useless** — it reveals nothing about $\lambda$.
+  $$f(x) = \lambda + a_1 x + \cdots + a_{t-1} x^{t-1} \pmod{P}$$
+- **SHA-256 commitment verification:** Each share is hashed at creation time and the commitment is stored. When an admin submits their share during tallying, the server recomputes the hash and rejects non-matching values:
+  ```
+  IF SHA256(submitted_share) ≠ stored_commitment → reject
+  ```
+  This prevents an admin from submitting a crafted share that poisons the Lagrange interpolation.
+
+- **Election state guard:** The `tally()` server action checks that the election status is `CLOSED`. Tallying is blocked at the application layer while the election is `OPEN`.
+
+**Residual risk:** If $t$ or more administrators are colluding adversaries, the threshold assumption is broken and the private key can be reconstructed prematurely. This is an inherent limitation of threshold cryptography — the choice of $t$ and $n$ must reflect the trust model of the election authority.
+
+---
+
+### 5. Ballot Substitution / Server-Side Manipulation
+
+**Threat:** The application server swaps a voter's submitted ciphertext with a different ciphertext before storing it in the database.
+
+**Attack surface:** The ballot submission API route; the database write path.
+
+**Mitigation chain:**
+
+- **End-to-End Verifiability:** Every accepted ballot is stored with its anonymous token hash. A voter can later look up their ballot receipt (the token) to confirm their ciphertext was recorded correctly.
+- **Public audit trail:** The list of stored ciphertexts is public by design. Any independent party can re-compute the homomorphic product and verify it matches the published result, detecting any substitution.
+
+**Residual risk:** Verifiability in the current prototype relies on the voter remembering their token. A production deployment should provide a more user-friendly receipt mechanism (e.g., a download-able proof file).
+
+---
+
+### 6. Credential Forgery
+
+**Threat:** An external attacker attempts to forge a valid voting credential $(T, S)$ without going through the authenticated blind signature flow.
+
+**Attack surface:** The credential acquisition endpoint; the RSA signature verification in the ballot submission route.
+
+**Mitigation chain:**
+
+- **RSA signature security:** Forging a signature without the RSA private key $d$ requires solving the RSA problem, which is computationally infeasible for the 2048-bit keys used. An attacker who fabricates an $(T, S)$ pair will fail the server-side signature check:
+  $$S^e \not\equiv T \pmod{n}$$
+- **Auth.js session requirement:** The credential endpoint is gated behind session-based authentication. An unauthenticated actor cannot even reach the blind signing route.
+
+---
+
+## <Eye className="inline-block mr-2 h-6 w-6 text-primary" /> Security Properties Summary
+
+| Property | Guarantee | Mechanism |
+| --- | --- | --- |
+| **Ballot Secrecy** | No entity learns how a voter voted | Paillier encryption + no voter FK |
+| **Voter Anonymity** | Ballots are unlinkable to identities | RSA Blind Signatures |
+| **Double-Vote Prevention** | Each credential is used at most once | Nullifier list (`used_tokens`) |
+| **Ballot Validity** | Every cast vote is in $\{0,1\}$ and sums to 1 | CDS OR-Proofs + Schnorr Sum Proof |
+| **Distributed Trust** | No single admin can decrypt early | Shamir $(t, n)$ Secret Sharing |
+| **Tally Integrity** | Results cannot be silently manipulated | Homomorphic verifiability |
+| **Credential Authenticity** | Ballots are only from eligible voters | 2048-bit RSA Blind Signatures |
+
+---
+
+## <XCircle className="inline-block mr-2 h-6 w-6 text-red-500" /> Known Limitations (Out-of-Scope Threats)
+
+The following attack vectors are explicitly **not** addressed in the current prototype and represent areas for future hardening:
+
+- **Coercion / Voter Bribery:** SigmaVote does not currently implement receipt-freeness beyond the informal separation of credentials from choices. A dedicated re-voting scheme is needed to definitively prevent a coercer from demanding proof.
+- **Timing-Channel Deanonymization:** Simultaneous monitoring of the signing and submission endpoints could correlate identities to ballots via timing.
+- **Middleware RBAC Gaps:** The Next.js middleware (`middleware.ts`) currently acts as a routing filter but does not perform full JWT role validation at the edge. Authorization is enforced at the server-action level, but this should be hardened for production.
+- **Side-Channel Attacks on RSA Signing:** The server-side blind signature operation has not been audited for timing or power-analysis side channels.
+- **Custom Cryptography Risks:** All cryptographic primitives are implemented from scratch in TypeScript. While the mathematical designs follow published academic protocols, they have not undergone a formal third-party security audit.

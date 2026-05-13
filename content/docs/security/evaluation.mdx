@@ -1,0 +1,167 @@
+---
+title: System Evaluation
+description: An honest assessment of SigmaVote's engineering challenges, performance trade-offs, and future roadmap.
+---
+
+import { CheckCircle2, AlertTriangle, Zap, Cpu, Database, ArrowRight } from 'lucide-react';
+
+# System Evaluation
+
+This page provides an honest, technical assessment of SigmaVote as a cryptographic prototype. It covers the significant engineering challenges encountered during development, the performance trade-offs made in reconciling strong cryptography with a web-based user experience, and the roadmap for transitioning the platform to a production-ready state.
+
+---
+
+## <CheckCircle2 className="inline-block mr-2 h-6 w-6 text-green-500" /> Achieved Security Properties
+
+The core objective of SigmaVote is to resolve the fundamental e-voting dilemma: guaranteeing absolute voter anonymity while maintaining mathematical proof of election integrity. The following properties have been formally implemented.
+
+### End-to-End Verifiability
+
+Every voter can verify that their encrypted ballot was included in the final aggregated tally. The anonymous token $T$ functions as a receipt: after the election, the voter can look up whether $H(T)$ is present in the stored ballot records. Since the final tally is computed homomorphically from the stored ciphertexts, any independent party can re-derive the result:
+
+$$\text{Total}_j = \text{Dec}\left( \prod_{i=1}^{n} C_{i,j} \pmod{N^2} \right)$$
+
+This confirms that the published results match the stored, publicly auditable ciphertexts.
+
+### Receipt-Freeness (Partial)
+
+The decoupling of the voter's authenticated session from the anonymous ballot submission provides a degree of receipt-freeness. Because the server signs a **blinded** token, the voter cannot construct a proof that links their identity to a specific ballot — the mathematical unblinding step erases the connection:
+
+$$S = S' \cdot r^{-1} \pmod{n} = T^d \pmod{n}$$
+
+However, a voter could still *voluntarily* reveal their token $T$ and the ballot's ciphertext vector as informal "proof" of how they voted. Full cryptographic receipt-freeness (requiring a re-voting mechanism) is a future goal.
+
+### Robustness Under Administrator Compromise
+
+The $(t, n)$-threshold Shamir scheme tolerates up to $t-1$ corrupt administrators without exposing the private key. In a deployment with five administrators and a threshold of three, two corrupt trustees cannot reconstruct $\lambda$. This is an information-theoretic guarantee — no amount of computation helps an adversary with fewer than $t$ shares.
+
+---
+
+## <AlertTriangle className="inline-block mr-2 h-6 w-6 text-yellow-500" /> Engineering Challenges
+
+### 1. BigInt Serialization Across System Boundaries
+
+The most pervasive low-level challenge in building a TypeScript cryptographic system is the `BigInt` serialization problem. Paillier keys are 2048-bit integers; ciphertexts, ZKP parameters ($c_0, e_0, z_0, c_1, e_1, z_1$), and Shamir shares are all `BigInt` values. JavaScript's `JSON.stringify` throws a `TypeError` when it encounters a `BigInt`.
+
+**Solution implemented:** A dedicated serialization layer converts all cryptographic values to base-10 decimal strings before API transport and database storage. On the receiving end, a deserialization step re-hydrates the strings back to `BigInt` for mathematical operations. This is implemented in `lib/crypto/proof-serialization.ts` and `lib/db-utils.ts`.
+
+```typescript
+// Serialization: BigInt → string for JSON transport
+const serializedProof = {
+  c0: proof.c0.toString(),
+  e0: proof.e0.toString(),
+  z0: proof.z0.toString(),
+  // ...
+};
+
+// Deserialization: string → BigInt for cryptographic operations
+const proof = {
+  c0: BigInt(raw.c0),
+  e0: BigInt(raw.e0),
+  z0: BigInt(raw.z0),
+  // ...
+};
+```
+
+**Trade-off:** Decimal string serialization is verbose — a 2048-bit number requires up to 617 decimal digits. This increases stored ballot size and network payload. A production system could use base64 or hex encoding to reduce the footprint by roughly 50%.
+
+---
+
+### 2. Client-Side Cryptographic Overhead
+
+SigmaVote's privacy model mandates that encryption, ZKP generation, and blinding all happen **inside the voter's browser**. The server never sees plaintext values. This is the correct design, but it places significant computational demand on client hardware.
+
+For an election with $k$ candidates, the browser must perform:
+
+- $k$ Paillier encryptions, each requiring a 2048-bit modular exponentiation.
+- $k$ Disjunctive OR-proofs, each requiring 4–6 additional exponentiations.
+- 1 Schnorr Sum-Proof.
+
+The total number of modular exponentiations scales as $O(k)$. On modern desktop hardware, a 5-candidate election completes in approximately 1–3 seconds. On lower-end mobile hardware, this can exceed 10 seconds and risk blocking the main UI thread.
+
+**Mitigations applied:**
+- Used `crypto.getRandomValues()` (native CSPRNG) for randomness generation, which is faster than a pure JS implementation.
+- Optimized the modular exponentiation using the square-and-multiply algorithm in `lib/crypto/bigint-utils.ts`.
+
+**Future mitigation:** Compiling the cryptographic core to **WebAssembly (WASM)** using a Rust or C implementation of Paillier would yield a 5–10× speedup. Alternatively, Web Workers could be used to move computation off the main thread, keeping the UI responsive during proof generation.
+
+---
+
+### 3. Anonymity vs. Relational Database Integrity
+
+Standard database design patterns mandate foreign keys for referential integrity. In a naïve voting system, a `ballot` row would have a `voter_id` column — trivially linking every vote to the person who cast it.
+
+SigmaVote deliberately **breaks this relational link** to protect voter privacy. The `ballots` table has no `voter_id` column. Instead, double-voting is prevented through the `used_tokens` nullifier table, which stores only the SHA-256 hash of the anonymous token:
+
+```
+┌──────────────────────────────────────┐     ┌─────────────────────────────┐
+│             ballots                  │     │         used_tokens          │
+│ id, election_id, ciphertexts, token, │     │ token_hash (PK), election_id │
+│ zkps, submitted_at                   │     └─────────────────────────────┘
+└──────────────────────────────────────┘
+         No FK to voters ↑
+```
+
+The `token` stored in `ballots` is the *raw* anonymous token $T$. The `used_tokens` table stores $H(T)$. These two can be correlated by the voter (who knows $T$) but not by the server (who only ever stores the hash, not the mapping from $T$ to a voter identity).
+
+**Trade-off:** Without a `voter_id` FK, cascading database operations (e.g., deleting a voter's data) will not automatically remove their ballot — by design. This requires careful application-level handling if GDPR-style "right to erasure" needs to be implemented.
+
+---
+
+### 4. Middleware and Authorization Gaps
+
+The Next.js middleware file (`middleware.ts`) currently implements route-pattern matching but does not perform full JWT session validation at the edge runtime.
+
+**Root cause:** Edge-compatible cryptographic JWT verification requires libraries built specifically for the Web Crypto API (e.g., `jose`). The Auth.js `auth()` helper, which performs full session validation, is not available at the edge middleware layer in the same way as in server components.
+
+**Current state:** Authorization is enforced at the **server-action level** (`features/admin/actions.ts`) via `auth()` session checks. This means a request to an admin route *can* reach the server before being blocked — the block happens before any state mutation, but the route itself is reachable.
+
+**Required hardening for production:**
+1. Replace the placeholder middleware with an edge-compatible JWT verifier (e.g., using `jose` to manually verify the Auth.js JWT).
+2. Add role-claim inspection to reject non-admin requests at the edge.
+3. Implement rate-limiting on the credential acquisition endpoint to prevent brute-force token harvesting.
+
+---
+
+## <Cpu className="inline-block mr-2 h-6 w-6 text-primary" /> Performance Summary
+
+| Operation | Location | Estimated Time (5 candidates) |
+| --- | --- | --- |
+| Credential generation (blind sig) | Client + Server round trip | ~300–600ms |
+| Ballot encryption (Paillier × 5) | Client-side browser | ~500ms–2s |
+| ZKP generation (OR × 5 + Sum) | Client-side browser | ~1s–4s |
+| Ballot submission + ZKP verification | Server | ~100–300ms |
+| Homomorphic aggregation (tally) | Server (N ballots) | ~$O(N)$, fast |
+| Shamir reconstruction | Server | Negligible |
+
+> **Key insight:** The dominant cost is client-side proof generation. Server-side verification is computationally cheap because it requires fewer exponentiations than proving.
+
+---
+
+## <ArrowRight className="inline-block mr-2 h-6 w-6 text-primary" /> Future Roadmap
+
+### Short-Term (Production Hardening)
+
+- **Harden middleware:** Implement edge-compatible JWT role validation to enforce RBAC before requests reach server components.
+- **Rate limiting:** Add per-IP and per-voter rate limits on the blind signature endpoint.
+- **Formal security audit:** Engage a third party to review the custom Paillier, ZKP, and Shamir implementations against published specifications.
+
+### Medium-Term (Performance & UX)
+
+- **WebAssembly cryptographic core:** Port the Paillier and ZKP primitives to Rust and compile to WASM for a 5–10× client-side speedup.
+- **Web Worker offloading:** Move all client-side cryptography to a Web Worker thread to prevent UI blocking during proof generation.
+- **Voter receipt download:** Provide a cryptographic proof-of-vote download (JSON file containing $(T, C, \text{ZKPs})$) so voters can independently verify their ballot was included.
+
+### Long-Term (Cryptographic Extensions)
+
+- **Full receipt-freeness:** Implement a re-voting scheme where a voter can re-cast their ballot, invalidating the previous one. This prevents coercers from demanding a "proof of vote."
+- **Mixnets integration:** Add an onion-routing shuffle layer before ballot storage to further decouple submission metadata from ballot content.
+- **Formal verification:** Model the core cryptographic protocols in a theorem prover (e.g., Coq or EasyCrypt) to obtain machine-checked security proofs.
+
+---
+
+## Conclusion
+
+SigmaVote successfully demonstrates that a web-native, full-stack application can implement academically rigorous cryptographic voting primitives. The four core guarantees — anonymity through blind signatures, homomorphic tallying, ZKP-enforced ballot validity, and threshold distributed trust — have all been realized in a functional prototype.
+
+The platform's honest limitations are engineering challenges, not fundamental design flaws. The path from prototype to production is clearly defined: harden the authorization layer, move cryptographic computation to WASM, and obtain a formal security audit. The mathematical foundation is sound; the engineering maturation is the remaining work.
